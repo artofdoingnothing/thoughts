@@ -10,6 +10,6 @@ describe('App', () => {
 
     it('shows empty state message', () => {
         render(<App />)
-        expect(screen.getByText(/No thoughts yet/i)).toBeInTheDocument()
+        expect(screen.getByText(/No thoughts found/i)).toBeInTheDocument()
     })
 })

@@ -1,44 +1,17 @@
-import { useState, useEffect } from 'react'
-import axios from 'axios'
-import './App.css'
-
-interface Emotion {
-  name: string;
-  is_generated: boolean;
-}
-
-interface Tag {
-  name: string;
-  is_generated: boolean;
-}
-
-interface Thought {
-  id: number;
-  title: string;
-  content: string;
-  status: string;
-  is_generated: boolean;
-  created_at: string;
-  updated_at: string;
-  emotions: Emotion[];
-  tags: Tag[];
-  links: number[];
-}
-
-interface PaginatedResponse {
-  total: number;
-  page: number;
-  limit: number;
-  items: Thought[];
-}
+import { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
+import { Box, Pagination, Stack, Typography, LinearProgress } from '@mui/material';
+import Layout from './components/Layout';
+import FilterBar from './components/FilterBar';
+import ThoughtTable from './components/ThoughtTable';
+import CreateThoughtModal from './components/CreateThoughtModal';
+import type { Thought, PaginatedResponse } from './types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 function App() {
   const [thoughts, setThoughts] = useState<Thought[]>([]);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Pagination and Search
@@ -46,11 +19,13 @@ function App() {
   const [total, setTotal] = useState(0);
   const [searchTag, setSearchTag] = useState('');
   const [searchEmotion, setSearchEmotion] = useState('');
-  const limit = 5;
+  const limit = 10;
 
-  const availableEmotions = ['Happy', 'Sad', 'Angry', 'Anxious', 'Excited', 'Calm'];
+  // Expanded Rows State
+  const [expandedThoughtIds, setExpandedThoughtIds] = useState<Set<number>>(new Set());
 
-  const fetchThoughts = async () => {
+  const fetchThoughts = useCallback(async () => {
+    setLoading(true);
     try {
       const params = new URLSearchParams({
         page: page.toString(),
@@ -64,34 +39,25 @@ function App() {
       setTotal(response.data.total);
     } catch (error) {
       console.error('Error fetching thoughts:', error);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [page, searchTag, searchEmotion]);
 
   useEffect(() => {
     fetchThoughts();
-    const interval = setInterval(fetchThoughts, 5000); // Poll for updates less frequently
+    const interval = setInterval(fetchThoughts, 10000);
     return () => clearInterval(interval);
-  }, [page, searchTag, searchEmotion]);
+  }, [fetchThoughts]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title || !content) return;
-
-    setLoading(true);
+  const handleDelete = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this thought?')) return;
     try {
-      await axios.post(`${API_BASE_URL}/thoughts/`, {
-        title,
-        content,
-        emotions: selectedEmotions
-      });
-      setTitle('');
-      setContent('');
-      setSelectedEmotions([]);
+      await axios.delete(`${API_BASE_URL}/thoughts/${id}`);
       fetchThoughts();
     } catch (error) {
-      console.error('Error creating thought:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error deleting thought:', error);
+      alert('Failed to delete thought');
     }
   };
 
@@ -105,153 +71,72 @@ function App() {
       await axios.post(`${API_BASE_URL}/thoughts/${sourceId}/links`, { target_id: targetId });
       alert('Linked successfully!');
       fetchThoughts();
-    } catch (error: any) {
-      alert(error.response?.data?.detail || 'Error linking thoughts');
+    } catch (error) {
+      const msg = axios.isAxiosError(error) ? error.response?.data?.detail : 'Error linking thoughts';
+      alert(msg || 'Error linking thoughts');
     }
   };
 
-  const toggleEmotion = (emotion: string) => {
-    setSelectedEmotions(prev =>
-      prev.includes(emotion) ? prev.filter(e => e !== emotion) : [...prev, emotion]
-    );
+  const toggleExpand = (id: number) => {
+    const newExpanded = new Set(expandedThoughtIds);
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id);
+    } else {
+      newExpanded.add(id);
+    }
+    setExpandedThoughtIds(newExpanded);
   };
 
   return (
-    <div className="container full-width">
-      <h1>Thought Aggregator</h1>
+    <Layout onNewThought={() => setIsModalOpen(true)}>
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h4" sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main' }}>
+          MY THOUGHTS
+        </Typography>
+        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+          Aggregating your stream of consciousness.
+        </Typography>
 
-      <div className="layout-grid">
-        <div className="creation-section">
-          <h2>New Thought</h2>
-          <form onSubmit={handleSubmit} className="thought-form">
-            <input
-              type="text"
-              placeholder="Title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <textarea
-              placeholder="What's on your mind?"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-            />
-            <div className="emotion-selector">
-              <label>Emotions:</label>
-              <div className="emotion-chips">
-                {availableEmotions.map(e => (
-                  <span
-                    key={e}
-                    className={`emotion-chip ${selectedEmotions.includes(e) ? 'selected' : ''}`}
-                    onClick={() => toggleEmotion(e)}
-                  >
-                    {e}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <button type="submit" disabled={loading}>
-              {loading ? 'Adding...' : 'Add Thought'}
-            </button>
-          </form>
-        </div>
+        {loading && <LinearProgress sx={{ mb: 2 }} />}
 
-        <div className="view-section">
-          <div className="view-header">
-            <h2>Thought Vault</h2>
-            <div className="filters">
-              <input
-                type="text"
-                placeholder="Search Tag..."
-                value={searchTag}
-                onChange={(e) => setSearchTag(e.target.value)}
-              />
-              <input
-                type="text"
-                placeholder="Search Emotion..."
-                value={searchEmotion}
-                onChange={(e) => setSearchEmotion(e.target.value)}
-              />
-            </div>
-          </div>
+        <FilterBar
+          searchTag={searchTag}
+          setSearchTag={setSearchTag}
+          searchEmotion={searchEmotion}
+          setSearchEmotion={setSearchEmotion}
+        />
 
-          <div className="table-container">
-            <table className="thoughts-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Title</th>
-                  <th>Status</th>
-                  <th>Type</th>
-                  <th>Emotions</th>
-                  <th>Tags</th>
-                  <th>Links</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {thoughts.map((thought) => (
-                  <tr key={thought.id}>
-                    <td>{thought.id}</td>
-                    <td>
-                      <div className="thought-title" title={thought.content}>
-                        {thought.title}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`status-badge ${thought.status}`}>
-                        {thought.status}
-                      </span>
-                    </td>
-                    <td>{thought.is_generated ? '🤖 Gen' : '👤 Org'}</td>
-                    <td>
-                      <div className="tag-list">
-                        {thought.emotions.map(e => (
-                          <span key={e.name} className={`inline-tag emotion ${e.is_generated ? 'generated' : 'manual'}`} title={e.is_generated ? 'Inferred by AI' : 'User Assigned'}>
-                            {e.name} {e.is_generated && '🤖'}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="tag-list">
-                        {thought.tags.map(t => (
-                          <span key={t.name} className={`inline-tag tag ${t.is_generated ? 'generated' : 'manual'}`} title={t.is_generated ? 'Inferred by AI' : 'User Assigned'}>
-                            {t.name} {t.is_generated && '🤖'}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td>{thought.links.join(', ')}</td>
-                    <td>
-                      <button className="small-button" onClick={() => handleLink(thought.id)}>
-                        Link
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <ThoughtTable
+          thoughts={thoughts}
+          expandedThoughtIds={expandedThoughtIds}
+          toggleExpand={toggleExpand}
+          onLink={handleLink}
+          onDelete={handleDelete}
+        />
 
-          <div className="pagination">
-            <button
-              disabled={page === 1}
-              onClick={() => setPage(p => p - 1)}
-            >
-              Previous
-            </button>
-            <span>Page {page} of {Math.ceil(total / limit) || 1}</span>
-            <button
-              disabled={page * limit >= total}
-              onClick={() => setPage(p => p + 1)}
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+        <Stack spacing={2} sx={{ mt: 4, alignItems: 'center' }}>
+          <Pagination
+            count={Math.ceil(total / limit) || 1}
+            page={page}
+            onChange={(_, p) => setPage(p)}
+            color="primary"
+            showFirstButton
+            showLastButton
+          />
+        </Stack>
+      </Box>
+
+      <CreateThoughtModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={() => {
+          fetchThoughts();
+          setIsModalOpen(false);
+        }}
+        apiBaseUrl={API_BASE_URL}
+      />
+    </Layout>
+  );
 }
 
-export default App
+export default App;
