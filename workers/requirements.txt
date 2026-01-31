@@ -1,0 +1,12 @@
+rq
+redis
+peewee
+pydantic
+psycopg2-binary
+
+# Development and Testing
+pytest
+flake8
+black
+
+google-genai
