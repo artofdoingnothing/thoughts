@@ -1,6 +1,6 @@
 import os
 import datetime
-from peewee import SqliteDatabase, Model, CharField, TextField, DateTimeField, BooleanField, ForeignKeyField, PostgresqlDatabase
+from peewee import SqliteDatabase, Model, CharField, TextField, DateTimeField, BooleanField, ForeignKeyField, IntegerField, PostgresqlDatabase
 from playhouse.db_url import connect
 
 # Database setup
@@ -12,6 +12,11 @@ class BaseModel(Model):
     class Meta:
         database = db
 
+class Persona(BaseModel):
+    name = CharField()
+    age = IntegerField()
+    gender = CharField()
+
 class Thought(BaseModel):
     title = CharField()
     content = TextField()
@@ -19,6 +24,7 @@ class Thought(BaseModel):
     is_generated = BooleanField(default=False)
     created_at = DateTimeField(default=datetime.datetime.now)
     updated_at = DateTimeField(default=datetime.datetime.now)
+    persona = ForeignKeyField(Persona, backref='thoughts', null=True)
 
     def save(self, *args, **kwargs):
         self.updated_at = datetime.datetime.now()
@@ -51,5 +57,5 @@ class ThoughtLink(BaseModel):
 
 def init_db():
     db.connect()
-    db.create_tables([Thought, Tag, ThoughtTag, Emotion, ThoughtEmotion, ThoughtLink], safe=True)
+    db.create_tables([Persona, Thought, Tag, ThoughtTag, Emotion, ThoughtEmotion, ThoughtLink], safe=True)
     db.close()

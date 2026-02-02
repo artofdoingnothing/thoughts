@@ -11,13 +11,11 @@ import {
     Chip,
     Box,
     Typography,
-    Collapse,
-    Button
+    Collapse
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import DeleteIcon from '@mui/icons-material/Delete';
-import LinkIcon from '@mui/icons-material/Link';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import PersonIcon from '@mui/icons-material/Person';
 import type { Thought } from '../types';
@@ -26,7 +24,6 @@ interface ThoughtTableProps {
     thoughts: Thought[];
     expandedThoughtIds: Set<number>;
     toggleExpand: (id: number) => void;
-    onLink: (id: number) => void;
     onDelete: (id: number) => void;
 }
 
@@ -34,9 +31,8 @@ const Row: React.FC<{
     thought: Thought;
     isExpanded: boolean;
     toggleExpand: () => void;
-    onLink: () => void;
     onDelete: () => void;
-}> = ({ thought, isExpanded, toggleExpand, onLink, onDelete }) => {
+}> = ({ thought, isExpanded, toggleExpand, onDelete }) => {
     return (
         <>
             <TableRow
@@ -55,8 +51,11 @@ const Row: React.FC<{
                 <TableCell component="th" scope="row" sx={{ fontWeight: 600 }}>
                     {thought.id}
                 </TableCell>
-                <TableCell sx={{ fontWeight: 500, cursor: 'pointer' }} onClick={toggleExpand}>
-                    {thought.title}
+                <TableCell sx={{ fontWeight: 500, cursor: 'pointer', maxWidth: 400 }} onClick={toggleExpand}>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{thought.title}</Typography>
+                    <Typography variant="caption" color="text.secondary" noWrap display="block">
+                        {thought.content}
+                    </Typography>
                 </TableCell>
                 <TableCell>
                     <Chip
@@ -68,7 +67,7 @@ const Row: React.FC<{
                 <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         {thought.is_generated ? (
-                            <Chip icon={<SmartToyIcon sx={{ fontSize: 16 }} />} label="AI" size="small" variant="outlined" />
+                            <Chip icon={<SmartToyIcon sx={{ fontSize: 16 }} />} label={thought.persona ? thought.persona.name : "AI"} size="small" variant="outlined" />
                         ) : (
                             <Chip icon={<PersonIcon sx={{ fontSize: 16 }} />} label="User" size="small" variant="outlined" />
                         )}
@@ -96,14 +95,6 @@ const Row: React.FC<{
                     </Box>
                 </TableCell>
                 <TableCell align="right">
-                    <Button
-                        size="small"
-                        startIcon={<LinkIcon />}
-                        onClick={(e) => { e.stopPropagation(); onLink(); }}
-                        sx={{ mr: 1, minWidth: 'auto' }}
-                    >
-                        Link
-                    </Button>
                     <IconButton
                         size="small"
                         color="error"
@@ -144,7 +135,7 @@ const Row: React.FC<{
     );
 };
 
-const ThoughtTable: React.FC<ThoughtTableProps> = ({ thoughts, expandedThoughtIds, toggleExpand, onLink, onDelete }) => {
+const ThoughtTable: React.FC<ThoughtTableProps> = ({ thoughts, expandedThoughtIds, toggleExpand, onDelete }) => {
     return (
         <TableContainer component={Paper} elevation={0} sx={{ border: 1, borderColor: 'divider', borderRadius: 2 }}>
             <Table sx={{ minWidth: 650 }} aria-label="thought table">
@@ -167,7 +158,6 @@ const ThoughtTable: React.FC<ThoughtTableProps> = ({ thoughts, expandedThoughtId
                             thought={thought}
                             isExpanded={expandedThoughtIds.has(thought.id)}
                             toggleExpand={() => toggleExpand(thought.id)}
-                            onLink={() => onLink(thought.id)}
                             onDelete={() => onDelete(thought.id)}
                         />
                     ))}

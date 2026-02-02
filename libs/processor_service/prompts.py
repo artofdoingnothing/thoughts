@@ -33,3 +33,19 @@ Thought: "{thought_content}"
 
 Output format: ["Emotion 1", "Emotion 2"]
 """
+
+THOUGHT_GENERATION_PROMPT = """
+You are an AI assistant helping to extract thoughts from a blog post.
+Analyze the following text content from a blog post and extract distinct thoughts expressed by the author.
+A "thought" is a specific idea, opinion, or reflection.
+Constraints:
+- Extract at most 7 thoughts.
+- Each thought must be under 2 sentences.
+- Do not format the content or wording of the thoughts (no bullet points in the string itself, just the raw text).
+- Return the result strictly as a Python list of strings. Do not include any other text or explanation.
+
+Blog Content:
+"{blog_content}"
+
+Output format: ["Thought 1", "Thought 2"]
+"""

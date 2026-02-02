@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
-from libs.db_service import ThoughtService, init_database, get_db
+from libs.db_service import ThoughtService, init_database, get_db, PersonaDomain
 from redis import Redis
 from rq import Queue
 import os
@@ -29,6 +29,21 @@ class ThoughtCreate(BaseModel):
     content: str
     emotions: Optional[List[str]] = []
     is_generated: Optional[bool] = False
+    persona_id: Optional[int] = None
+
+class PersonaCreate(BaseModel):
+    name: str
+    age: int
+    gender: str
+
+class GenerateThoughtsRequest(BaseModel):
+    url: str
+    persona_id: int
+
+class ThoughtUpdate(BaseModel):
+    status: Optional[str] = None
+    emotions: Optional[List[str]] = None
+    is_generated: Optional[bool] = None
 
 class ThoughtLinkCreate(BaseModel):
     target_id: int
@@ -47,7 +62,8 @@ def create_thought(thought_data: ThoughtCreate):
         title=thought_data.title,
         content=thought_data.content,
         emotions=thought_data.emotions,
-        is_generated=thought_data.is_generated
+        is_generated=thought_data.is_generated,
+        persona_id=thought_data.persona_id
     )
     
     # Enqueue background tasks
@@ -57,6 +73,24 @@ def create_thought(thought_data: ThoughtCreate):
     q_distortions.enqueue("workers.tasks.analyze_cognitive_distortions", thought.id)
     q_sentiment.enqueue("workers.tasks.analyze_sentiment", thought.id)
     return thought.dict()
+
+@app.get("/personas/", response_model=List[PersonaDomain])
+def list_personas():
+    return ThoughtService.list_personas()
+
+@app.post("/personas/", response_model=PersonaDomain)
+def create_persona(persona: PersonaCreate):
+    return ThoughtService.create_persona(
+        name=persona.name,
+        age=persona.age,
+        gender=persona.gender
+    )
+
+@app.post("/generate-thoughts/")
+def generate_thoughts(request: GenerateThoughtsRequest):
+    q_generation = Queue('generation', connection=redis_conn)
+    q_generation.enqueue("workers.tasks.parse_blog_and_generate_thoughts", request.url, request.persona_id)
+    return {"message": "Thought generation task has been queued"}
 
 @app.get("/thoughts/")
 def list_thoughts(
@@ -89,3 +123,21 @@ def get_thought(thought_id: int):
     if not thought:
         raise HTTPException(status_code=404, detail="Thought not found")
     return thought.dict()
+
+@app.delete("/thoughts/{thought_id}")
+def delete_thought(thought_id: int):
+    success = ThoughtService.delete_thought(thought_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Thought not found")
+    return {"message": "Thought deleted successfully"}
+
+@app.put("/thoughts/{thought_id}")
+def update_thought(thought_id: int, thought_update: dict):
+    # Manually check for restricted fields
+    if 'title' in thought_update or 'content' in thought_update:
+        raise HTTPException(status_code=400, detail="Cannot update title or content")
+    
+    updated_thought = ThoughtService.update_thought(thought_id, thought_update)
+    if not updated_thought:
+        raise HTTPException(status_code=404, detail="Thought not found")
+    return updated_thought.dict()

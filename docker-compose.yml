@@ -97,6 +97,26 @@ services:
     volumes:
       - .:/app
 
+  worker-generation:
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DATABASE_URL=postgresql://user:password@postgres:5432/thoughts
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - QUEUES=generation
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      api:
+        condition: service_started
+    volumes:
+      - .:/app
+
   frontend:
     build:
       context: ./frontend

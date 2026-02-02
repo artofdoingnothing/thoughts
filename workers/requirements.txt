@@ -10,3 +10,5 @@ flake8
 black
 
 google-genai
+requests
+beautifulsoup4

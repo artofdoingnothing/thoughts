@@ -1,7 +1,7 @@
 from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel as PydanticBaseModel
-from .models import Thought, Tag, ThoughtTag, Emotion, ThoughtEmotion, ThoughtLink, db as peewee_db
+from .models import Thought, Tag, ThoughtTag, Emotion, ThoughtEmotion, ThoughtLink, Persona, db as peewee_db
 
 # Domain models (DTOs)
 class TagDomain(PydanticBaseModel):
@@ -11,6 +11,15 @@ class TagDomain(PydanticBaseModel):
 class EmotionDomain(PydanticBaseModel):
     name: str
     is_generated: bool
+
+class PersonaDomain(PydanticBaseModel):
+    id: int
+    name: str
+    age: int
+    gender: str
+
+    class Config:
+        from_attributes = True
 
 class ThoughtDomain(PydanticBaseModel):
     id: int
@@ -23,6 +32,7 @@ class ThoughtDomain(PydanticBaseModel):
     emotions: List[EmotionDomain] = []
     tags: List[TagDomain] = []
     links: List[int] = []
+    persona: Optional[PersonaDomain] = None
 
     class Config:
         from_attributes = True
@@ -40,16 +50,43 @@ class ThoughtService:
             updated_at=thought.updated_at,
             emotions=[EmotionDomain(name=te.emotion.name, is_generated=te.is_generated) for te in thought.emotions],
             tags=[TagDomain(name=tt.tag.name, is_generated=tt.is_generated) for tt in thought.tags],
-            links=[tl.target.id for tl in thought.links_from]
+            links=[tl.target.id for tl in thought.links_from],
+            persona=PersonaDomain.from_orm(thought.persona) if thought.persona else None
         )
 
     @classmethod
-    def create_thought(cls, title: str, content: str, emotions: List[str] = [], is_generated: bool = False) -> ThoughtDomain:
+    def create_persona(cls, name: str, age: int, gender: str) -> PersonaDomain:
+        persona = Persona.create(name=name, age=age, gender=gender)
+        return PersonaDomain.from_orm(persona)
+
+    @classmethod
+    def list_personas(cls) -> List[PersonaDomain]:
+        personas = Persona.select()
+        return [PersonaDomain.from_orm(p) for p in personas]
+
+    @classmethod
+    def get_persona(cls, persona_id: int) -> Optional[PersonaDomain]:
+        try:
+            persona = Persona.get_by_id(persona_id)
+            return PersonaDomain.from_orm(persona)
+        except Persona.DoesNotExist:
+            return None
+
+    @classmethod
+    def create_thought(cls, title: str, content: str, emotions: List[str] = [], is_generated: bool = False, persona_id: Optional[int] = None) -> ThoughtDomain:
         with peewee_db.atomic():
+            persona = None
+            if persona_id:
+                try:
+                    persona = Persona.get_by_id(persona_id)
+                except Persona.DoesNotExist:
+                    pass
+
             thought = Thought.create(
                 title=title,
                 content=content,
-                is_generated=is_generated
+                is_generated=is_generated,
+                persona=persona
             )
             for emotion_name in emotions:
                 emotion, _ = Emotion.get_or_create(name=emotion_name.lower())
@@ -133,8 +170,49 @@ class ThoughtService:
             return True
         except Thought.DoesNotExist:
             return False
-        finally:
-            pass
+
+    @classmethod
+    def delete_thought(cls, thought_id: int) -> bool:
+        try:
+            with peewee_db.atomic():
+                thought = Thought.get_by_id(thought_id)
+                # Dependencies like tags/emotions/links are handled by foreign key constraints
+                # or we can manually delete if cascade is not set. 
+                # Assuming cascade or simple delete for now. 
+                # Peewee default is CASCADE for ForeignKeyField if on_delete is not specified? No, usually RESTRICT.
+                # Use recursive delete to be safe or rely on DB.
+                # Because we didn't specify on_delete='CASCADE', we might need to delete related items manually
+                # But let's try simple delete first.
+                thought.delete_instance(recursive=True) 
+                return True
+        except Thought.DoesNotExist:
+            return False
+
+    @classmethod
+    def update_thought(cls, thought_id: int, updates: dict) -> Optional[ThoughtDomain]:
+        try:
+            with peewee_db.atomic():
+                thought = Thought.get_by_id(thought_id)
+                
+                # Check for restricted fields just in case, though handled layer above usually
+                # But service layer should be robust.
+                # However, requirements say "Updating a thought should not allow changes to the content or the title"
+                # so we can filter here too.
+                
+                valid_updates = {k: v for k, v in updates.items() if k not in ['title', 'content', 'id', 'created_at']}
+                
+                if not valid_updates and not updates:
+                     # no valid updates
+                     return cls._map_to_domain(thought)
+
+                query = Thought.update(**valid_updates).where(Thought.id == thought_id)
+                query.execute()
+                
+                # Refresh
+                thought = Thought.get_by_id(thought_id)
+                return cls._map_to_domain(thought)
+        except Thought.DoesNotExist:
+            return None
 
 def init_database():
     from .models import init_db

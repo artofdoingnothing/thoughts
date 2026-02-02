@@ -8,6 +8,14 @@ export interface Tag {
     is_generated: boolean;
 }
 
+
+export interface Persona {
+    id: number;
+    name: string;
+    age: number;
+    gender: string;
+}
+
 export interface Thought {
     id: number;
     title: string;
@@ -19,6 +27,7 @@ export interface Thought {
     emotions: Emotion[];
     tags: Tag[];
     links: number[];
+    persona?: Persona;
 }
 
 export interface PaginatedResponse {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppBar, Toolbar, Typography, Container, Box, Button } from '@mui/material';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import { Link as RouterLink } from 'react-router-dom';
 
 interface LayoutProps {
     children: React.ReactNode;
@@ -34,6 +35,12 @@ const Layout: React.FC<LayoutProps> = ({ children, onNewThought }) => {
                             >
                                 Thought Aggregator
                             </Typography>
+                        </Box>
+
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                            <Button color="inherit" component={RouterLink} to="/" sx={{ color: 'primary.main' }}>Thoughts</Button>
+                            <Button color="inherit" component={RouterLink} to="/personas" sx={{ color: 'primary.main' }}>Personas</Button>
+                            <Button color="inherit" component={RouterLink} to="/generate" sx={{ color: 'primary.main' }}>Generate</Button>
                         </Box>
 
                         <Button

@@ -1,1 +1,1 @@
-from .service import ThoughtService, ThoughtDomain, init_database, get_db
+from .service import ThoughtService, ThoughtDomain, PersonaDomain, init_database, get_db
