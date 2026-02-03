@@ -1,5 +1,6 @@
 from typing import List, Optional
 from datetime import datetime
+from peewee import fn
 from pydantic import BaseModel as PydanticBaseModel
 from .models import Thought, Tag, ThoughtTag, Emotion, ThoughtEmotion, ThoughtLink, Persona, db as peewee_db
 
@@ -213,6 +214,38 @@ class ThoughtService:
                 return cls._map_to_domain(thought)
         except Thought.DoesNotExist:
             return None
+
+    @classmethod
+    def get_persona_metrics(cls, persona_id: int) -> dict:
+        try:
+            persona = Persona.get_by_id(persona_id)
+            
+            # Get top emotions
+            emotions = (Emotion
+                       .select(Emotion.name, fn.COUNT(ThoughtEmotion.id).alias('count'))
+                       .join(ThoughtEmotion)
+                       .join(Thought)
+                       .where(Thought.persona == persona)
+                       .group_by(Emotion.name)
+                       .order_by(fn.COUNT(ThoughtEmotion.id).desc())
+                       .limit(5))
+            
+            # Get top tags
+            tags = (Tag
+                   .select(Tag.name, fn.COUNT(ThoughtTag.id).alias('count'))
+                   .join(ThoughtTag)
+                   .join(Thought)
+                   .where(Thought.persona == persona)
+                   .group_by(Tag.name)
+                   .order_by(fn.COUNT(ThoughtTag.id).desc())
+                   .limit(5))
+            
+            return {
+                "top_emotions": [e.name for e in emotions],
+                "top_tags": [t.name for t in tags]
+            }
+        except Persona.DoesNotExist:
+            return {"top_emotions": [], "top_tags": []}
 
 def init_database():
     from .models import init_db

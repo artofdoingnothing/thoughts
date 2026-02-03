@@ -106,7 +106,7 @@ services:
       - REDIS_PORT=6379
       - DATABASE_URL=postgresql://user:password@postgres:5432/thoughts
       - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - QUEUES=generation
+      - QUEUES=generation,essay
     depends_on:
       postgres:
         condition: service_healthy

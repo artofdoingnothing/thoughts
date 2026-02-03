@@ -2,7 +2,7 @@ import json
 import ast
 from typing import List
 from libs.llm_service import LLMFactory
-from .prompts import COGNITIVE_DISTORTION_PROMPT, SENTIMENT_ANALYSIS_PROMPT, THOUGHT_GENERATION_PROMPT
+from .prompts import COGNITIVE_DISTORTION_PROMPT, SENTIMENT_ANALYSIS_PROMPT, THOUGHT_GENERATION_PROMPT, ESSAY_GENERATION_PROMPT
 
 class ProcessorService:
     def __init__(self):
@@ -43,3 +43,12 @@ class ProcessorService:
         prompt = THOUGHT_GENERATION_PROMPT.format(blog_content=text)
         result = self.llm.generate_content(prompt)
         return self._parse_list_output(result)
+
+    def generate_essay(self, starting_text: str, persona_details: str, emotions: List[str], tags: List[str]) -> str:
+        prompt = ESSAY_GENERATION_PROMPT.format(
+            starting_text=starting_text,
+            persona_details=persona_details,
+            emotions=", ".join(emotions),
+            tags=", ".join(tags)
+        )
+        return self.llm.generate_content(prompt)

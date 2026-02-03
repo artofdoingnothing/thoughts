@@ -5,6 +5,8 @@ from bs4 import BeautifulSoup
 from redis import Redis
 from rq import Queue
 import os
+import re
+from .utils import remove_pii
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = os.getenv("REDIS_PORT", "6379")
@@ -72,6 +74,10 @@ def parse_blog_and_generate_thoughts(url, persona_id):
         if len(text_content) < 100:
              text_content = soup.get_text()
 
+        # Remove PII
+        page_title = remove_pii(page_title)
+        text_content = remove_pii(text_content)
+
         thoughts = processor.generate_thoughts_from_text(text_content)
         print(f"Generated {len(thoughts)} thoughts from blog.")
 
@@ -96,4 +102,28 @@ def parse_blog_and_generate_thoughts(url, persona_id):
             
     except Exception as e:
         print(f"Error parsing blog or generating thoughts: {e}")
+
+def generate_essay(persona_id, starting_text):
+    print(f"Generating essay for persona {persona_id}...")
+    try:
+        persona = ThoughtService.get_persona(persona_id)
+        if not persona:
+             print(f"Persona {persona_id} not found.")
+             return "Error: Persona not found"
+
+        metrics = ThoughtService.get_persona_metrics(persona_id)
+        
+        persona_details = f"Name: {persona.name}, Age: {persona.age}, Gender: {persona.gender}"
+        
+        essay = processor.generate_essay(
+            starting_text=starting_text,
+            persona_details=persona_details,
+            emotions=metrics['top_emotions'],
+            tags=metrics['top_tags']
+        )
+        print(f"Generated essay of length {len(essay)}")
+        return essay
+    except Exception as e:
+        print(f"Error generating essay: {e}")
+        raise e
 

@@ -49,3 +49,25 @@ Blog Content:
 
 Output format: ["Thought 1", "Thought 2"]
 """
+
+ESSAY_GENERATION_PROMPT = """
+You are a creative writer.
+Complete the following essay based on the starting text provided.
+Adopt the persona described below.
+Incorporating the provided emotions and tags into the tone and content of the essay.
+
+Persona:
+{persona_details}
+
+Top Emotions: {emotions}
+Top Tags: {tags}
+
+Constraints:
+- Continue the essay from the starting text.
+- Maximum 500 words.
+- Maintain the persona's voice.
+- Return only the completion text. Do not repeat the starting text unless necessary for flow, but preferably just continue.
+
+Starting Text:
+"{starting_text}"
+"""

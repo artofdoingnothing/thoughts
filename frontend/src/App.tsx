@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import Personas from './pages/Personas';
 import BlogGenerator from './pages/BlogGenerator';
+import EssayGenerator from './pages/EssayGenerator';
 import CreateThoughtModal from './components/CreateThoughtModal';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -24,6 +25,7 @@ function App() {
           <Route path="/" element={<Home refreshKey={refreshKey} />} />
           <Route path="/personas" element={<Personas />} />
           <Route path="/generate" element={<BlogGenerator />} />
+          <Route path="/essay" element={<EssayGenerator />} />
         </Routes>
       </Layout>
 
