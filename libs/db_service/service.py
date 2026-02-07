@@ -1,8 +1,9 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
-from peewee import fn
+from sqlalchemy import create_engine, select, func, update, delete
+from sqlalchemy.orm import sessionmaker, Session, joinedload
 from pydantic import BaseModel as PydanticBaseModel
-from .models import Thought, Tag, ThoughtTag, Emotion, ThoughtEmotion, ThoughtLink, Persona, db as peewee_db
+from .models import Thought, Tag, ThoughtTag, Emotion, ThoughtEmotion, ThoughtLink, Persona, SessionLocal
 
 # Domain models (DTOs)
 class TagDomain(PydanticBaseModel):
@@ -28,8 +29,8 @@ class ThoughtDomain(PydanticBaseModel):
     content: str
     status: str
     is_generated: bool
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     emotions: List[EmotionDomain] = []
     tags: List[TagDomain] = []
     links: List[int] = []
@@ -51,81 +52,164 @@ class ThoughtService:
             updated_at=thought.updated_at,
             emotions=[EmotionDomain(name=te.emotion.name, is_generated=te.is_generated) for te in thought.emotions],
             tags=[TagDomain(name=tt.tag.name, is_generated=tt.is_generated) for tt in thought.tags],
-            links=[tl.target.id for tl in thought.links_from],
-            persona=PersonaDomain.from_orm(thought.persona) if thought.persona else None
+            links=[tl.target_thought.id for tl in thought.links_from],
+            persona=PersonaDomain.model_validate(thought.persona) if thought.persona else None
         )
 
     @classmethod
     def create_persona(cls, name: str, age: int, gender: str) -> PersonaDomain:
-        persona = Persona.create(name=name, age=age, gender=gender)
-        return PersonaDomain.from_orm(persona)
+        with SessionLocal() as session:
+            persona = Persona(name=name, age=age, gender=gender)
+            session.add(persona)
+            session.commit()
+            session.refresh(persona)
+            return PersonaDomain.model_validate(persona)
 
     @classmethod
     def list_personas(cls) -> List[PersonaDomain]:
-        personas = Persona.select()
-        return [PersonaDomain.from_orm(p) for p in personas]
+        with SessionLocal() as session:
+            personas = session.scalars(select(Persona)).all()
+            return [PersonaDomain.model_validate(p) for p in personas]
 
     @classmethod
     def get_persona(cls, persona_id: int) -> Optional[PersonaDomain]:
-        try:
-            persona = Persona.get_by_id(persona_id)
-            return PersonaDomain.from_orm(persona)
-        except Persona.DoesNotExist:
-            return None
+        with SessionLocal() as session:
+            persona = session.get(Persona, persona_id)
+            return PersonaDomain.model_validate(persona) if persona else None
 
     @classmethod
     def create_thought(cls, title: str, content: str, emotions: List[str] = [], is_generated: bool = False, persona_id: Optional[int] = None) -> ThoughtDomain:
-        with peewee_db.atomic():
+        with SessionLocal() as session:
             persona = None
             if persona_id:
-                try:
-                    persona = Persona.get_by_id(persona_id)
-                except Persona.DoesNotExist:
-                    pass
+                persona = session.get(Persona, persona_id)
 
-            thought = Thought.create(
+            thought = Thought(
                 title=title,
                 content=content,
                 is_generated=is_generated,
-                persona=persona
+                persona_id=persona.id if persona else None
             )
+            session.add(thought)
+            session.flush() # Flush to get ID
+
             for emotion_name in emotions:
-                emotion, _ = Emotion.get_or_create(name=emotion_name.lower())
-                ThoughtEmotion.create(thought=thought, emotion=emotion, is_generated=False)
+                stmt = select(Emotion).where(Emotion.name == emotion_name.lower())
+                emotion = session.scalar(stmt)
+                if not emotion:
+                    emotion = Emotion(name=emotion_name.lower())
+                    session.add(emotion)
+                    session.flush()
+                
+                # Check if exists
+                stmt_te = select(ThoughtEmotion).where(
+                    ThoughtEmotion.thought_id == thought.id,
+                    ThoughtEmotion.emotion_id == emotion.id
+                )
+                if not session.scalar(stmt_te):
+                    te = ThoughtEmotion(thought_id=thought.id, emotion_id=emotion.id, is_generated=False)
+                    session.add(te)
+
+            session.commit()
+            
+            # Re-fetch with relationships for domain mapping
+            # We need to eager load purely for the map_to_domain to work without session issues if we were passing objects around
+            # But since we map inside the session context here, it's fine.
+            # Ideally we should use session.refresh or a new query.
+            stmt = select(Thought).where(Thought.id == thought.id).options(
+                joinedload(Thought.emotions).joinedload(ThoughtEmotion.emotion),
+                joinedload(Thought.tags).joinedload(ThoughtTag.tag),
+                joinedload(Thought.links_from).joinedload(ThoughtLink.target_thought),
+                joinedload(Thought.persona)
+            )
+            thought = session.scalar(stmt)
             return cls._map_to_domain(thought)
 
     @classmethod
     def list_thoughts(cls, tag: Optional[str] = None, emotion: Optional[str] = None, page: int = 1, limit: int = 10):
-        query = Thought.select()
-        if tag:
-            query = query.join(ThoughtTag).join(Tag).where(Tag.name == tag.lower())
-        if emotion:
-            query = query.join(ThoughtEmotion, on=(Thought.id == ThoughtEmotion.thought)).join(Emotion).where(Emotion.name == emotion.lower())
-        
-        total_count = query.count()
-        thoughts = query.order_by(Thought.created_at.desc()).paginate(page, limit)
-        
-        return {
-            "total": total_count,
-            "items": [cls._map_to_domain(t) for t in thoughts]
-        }
+        with SessionLocal() as session:
+            query = select(Thought).options(
+                joinedload(Thought.emotions).joinedload(ThoughtEmotion.emotion),
+                joinedload(Thought.tags).joinedload(ThoughtTag.tag),
+                joinedload(Thought.links_from).joinedload(ThoughtLink.target_thought),
+                joinedload(Thought.persona)
+            )
+            
+            if tag:
+                query = query.join(Thought.tags).join(ThoughtTag.tag).where(Tag.name == tag.lower())
+            if emotion:
+                query = query.join(Thought.emotions).join(ThoughtEmotion.emotion).where(Emotion.name == emotion.lower())
+            
+            # Count
+            # Optimized count: select(func.count()).select_from(query.subquery())
+            # Simple list fetch for now
+            # Note: Pagination in SQLAlchemy with joins can be tricky for total count.
+            # Let's do a separate count query.
+            # Using subquery for count correctnes with joins
+            
+            # Actually easier to use session.scalar(select(func.count()).where(...)) but we need to duplicate logic
+            # For simplicity let's execute the filtered query without pagination to count (not efficient but safe for small data)
+            # Or construct a count query.
+            
+            # Building predicates first
+            predicates = []
+            if tag:
+                # This logic is slightly different than above, constructing it manually
+                # Join is needed for filtering
+                pass 
+
+            # Let's stick to the join construction
+            count_query = select(func.count(Thought.id))
+            if tag:
+                count_query = count_query.join(Thought.tags).join(ThoughtTag.tag).where(Tag.name == tag.lower())
+            if emotion:
+                count_query = count_query.join(Thought.emotions).join(ThoughtEmotion.emotion).where(Emotion.name == emotion.lower())
+            
+            total_count = session.scalar(count_query)
+
+            query = query.order_by(Thought.created_at.desc()).offset((page - 1) * limit).limit(limit)
+            thoughts = session.scalars(query).unique().all()
+            
+            return {
+                "total": total_count,
+                "items": [cls._map_to_domain(t) for t in thoughts]
+            }
 
     @classmethod
     def get_thought(cls, thought_id: int) -> Optional[ThoughtDomain]:
-        try:
-            thought = Thought.get_by_id(thought_id)
-            return cls._map_to_domain(thought)
-        except Thought.DoesNotExist:
-            return None
+        with SessionLocal() as session:
+            stmt = select(Thought).where(Thought.id == thought_id).options(
+                joinedload(Thought.emotions).joinedload(ThoughtEmotion.emotion),
+                joinedload(Thought.tags).joinedload(ThoughtTag.tag),
+                joinedload(Thought.links_from).joinedload(ThoughtLink.target_thought),
+                joinedload(Thought.persona)
+            )
+            thought = session.scalar(stmt)
+            return cls._map_to_domain(thought) if thought else None
 
     @classmethod
     def add_tags(cls, thought_id: int, tags_list: List[str], is_generated: bool = False) -> bool:
         try:
-            with peewee_db.atomic():
-                thought = Thought.get_by_id(thought_id)
+            with SessionLocal() as session:
+                thought = session.get(Thought, thought_id)
+                if not thought:
+                    return False
+                
                 for tag_name in tags_list:
-                    tag, _ = Tag.get_or_create(name=tag_name.lower())
-                    ThoughtTag.get_or_create(thought=thought, tag=tag, defaults={'is_generated': is_generated})
+                    tag = session.scalar(select(Tag).where(Tag.name == tag_name.lower()))
+                    if not tag:
+                        tag = Tag(name=tag_name.lower())
+                        session.add(tag)
+                        session.flush()
+                    
+                    stmt_tt = select(ThoughtTag).where(
+                        ThoughtTag.thought_id == thought.id,
+                        ThoughtTag.tag_id == tag.id
+                    )
+                    if not session.scalar(stmt_tt):
+                        tt = ThoughtTag(thought_id=thought.id, tag_id=tag.id, is_generated=is_generated)
+                        session.add(tt)
+                session.commit()
                 return True
         except Exception:
             return False
@@ -133,123 +217,153 @@ class ThoughtService:
     @classmethod
     def add_emotions(cls, thought_id: int, emotions_list: List[str], is_generated: bool = False) -> bool:
         try:
-            with peewee_db.atomic():
-                thought = Thought.get_by_id(thought_id)
+            with SessionLocal() as session:
+                thought = session.get(Thought, thought_id)
+                if not thought:
+                    return False
+
                 for emotion_name in emotions_list:
-                    emotion, _ = Emotion.get_or_create(name=emotion_name.lower())
-                    ThoughtEmotion.get_or_create(thought=thought, emotion=emotion, defaults={'is_generated': is_generated})
+                    emotion = session.scalar(select(Emotion).where(Emotion.name == emotion_name.lower()))
+                    if not emotion:
+                        emotion = Emotion(name=emotion_name.lower())
+                        session.add(emotion)
+                        session.flush()
+
+                    stmt_te = select(ThoughtEmotion).where(
+                        ThoughtEmotion.thought_id == thought.id,
+                        ThoughtEmotion.emotion_id == emotion.id
+                    )
+                    if not session.scalar(stmt_te):
+                        te = ThoughtEmotion(thought_id=thought.id, emotion_id=emotion.id, is_generated=is_generated)
+                        session.add(te)
+                session.commit()
                 return True
         except Exception:
             return False
 
     @classmethod
     def link_thoughts(cls, source_id: int, target_id: int) -> bool:
+        if source_id == target_id:
+            return False
+            
         try:
-            source = Thought.get_by_id(source_id)
-            target = Thought.get_by_id(target_id)
-            
-            if source.id == target.id:
-                return False
-            
-            if source.links_from.count() >= 3:
-                return False
+            with SessionLocal() as session:
+                source = session.get(Thought, source_id)
+                target = session.get(Thought, target_id)
                 
-            ThoughtLink.get_or_create(source=source, target=target)
-            return True
-        except Thought.DoesNotExist:
+                if not source or not target:
+                    return False
+                
+                # Check link count
+                # Need to count existing links_from
+                link_count = session.scalar(select(func.count(ThoughtLink.id)).where(ThoughtLink.source_id == source_id))
+                if link_count >= 3:
+                     return False
+
+                # Check existing link
+                existing = session.scalar(select(ThoughtLink).where(ThoughtLink.source_id == source_id, ThoughtLink.target_id == target_id))
+                if existing:
+                    return True # Idempotent
+
+                link = ThoughtLink(source_id=source_id, target_id=target_id)
+                session.add(link)
+                session.commit()
+                return True
+        except Exception:
             return False
 
     @classmethod
     def update_status(cls, thought_id: int, status: str) -> bool:
         try:
-            if peewee_db.is_closed():
-                peewee_db.connect()
-            
-            thought = Thought.get_by_id(thought_id)
-            thought.status = status
-            thought.save()
-            return True
-        except Thought.DoesNotExist:
+            with SessionLocal() as session:
+                stmt = update(Thought).where(Thought.id == thought_id).values(status=status)
+                result = session.execute(stmt)
+                session.commit()
+                return result.rowcount > 0
+        except Exception:
             return False
 
     @classmethod
     def delete_thought(cls, thought_id: int) -> bool:
         try:
-            with peewee_db.atomic():
-                thought = Thought.get_by_id(thought_id)
-                # Dependencies like tags/emotions/links are handled by foreign key constraints
-                # or we can manually delete if cascade is not set. 
-                # Assuming cascade or simple delete for now. 
-                # Peewee default is CASCADE for ForeignKeyField if on_delete is not specified? No, usually RESTRICT.
-                # Use recursive delete to be safe or rely on DB.
-                # Because we didn't specify on_delete='CASCADE', we might need to delete related items manually
-                # But let's try simple delete first.
-                thought.delete_instance(recursive=True) 
+            with SessionLocal() as session:
+                thought = session.get(Thought, thought_id)
+                if not thought:
+                    return False
+                session.delete(thought)
+                session.commit()
                 return True
-        except Thought.DoesNotExist:
+        except Exception:
             return False
 
     @classmethod
     def update_thought(cls, thought_id: int, updates: dict) -> Optional[ThoughtDomain]:
         try:
-            with peewee_db.atomic():
-                thought = Thought.get_by_id(thought_id)
-                
-                # Check for restricted fields just in case, though handled layer above usually
-                # But service layer should be robust.
-                # However, requirements say "Updating a thought should not allow changes to the content or the title"
-                # so we can filter here too.
-                
+            with SessionLocal() as session:
                 valid_updates = {k: v for k, v in updates.items() if k not in ['title', 'content', 'id', 'created_at']}
                 
                 if not valid_updates and not updates:
-                     # no valid updates
-                     return cls._map_to_domain(thought)
+                     # Just return current
+                     thought = session.get(Thought, thought_id)
+                     return cls._map_to_domain(thought) if thought else None
 
-                query = Thought.update(**valid_updates).where(Thought.id == thought_id)
-                query.execute()
+                stmt = update(Thought).where(Thought.id == thought_id).values(**valid_updates)
+                result = session.execute(stmt)
+                session.commit()
                 
-                # Refresh
-                thought = Thought.get_by_id(thought_id)
-                return cls._map_to_domain(thought)
-        except Thought.DoesNotExist:
+                if result.rowcount == 0:
+                    return None
+                    
+                # Fetch updated
+                updated = session.get(Thought, thought_id)
+                return cls._map_to_domain(updated)
+        except Exception:
             return None
 
     @classmethod
     def get_persona_metrics(cls, persona_id: int) -> dict:
         try:
-            persona = Persona.get_by_id(persona_id)
-            
-            # Get top emotions
-            emotions = (Emotion
-                       .select(Emotion.name, fn.COUNT(ThoughtEmotion.id).alias('count'))
-                       .join(ThoughtEmotion)
-                       .join(Thought)
-                       .where(Thought.persona == persona)
-                       .group_by(Emotion.name)
-                       .order_by(fn.COUNT(ThoughtEmotion.id).desc())
-                       .limit(5))
-            
-            # Get top tags
-            tags = (Tag
-                   .select(Tag.name, fn.COUNT(ThoughtTag.id).alias('count'))
-                   .join(ThoughtTag)
-                   .join(Thought)
-                   .where(Thought.persona == persona)
-                   .group_by(Tag.name)
-                   .order_by(fn.COUNT(ThoughtTag.id).desc())
-                   .limit(5))
-            
-            return {
-                "top_emotions": [e.name for e in emotions],
-                "top_tags": [t.name for t in tags]
-            }
-        except Persona.DoesNotExist:
-            return {"top_emotions": [], "top_tags": []}
+            with SessionLocal() as session:
+                persona = session.get(Persona, persona_id)
+                if not persona:
+                     return {"top_emotions": [], "top_tags": []}
+
+                # Top emotions
+                # Select emotion.name, count() from emotion join thoughtemotion join thought where thought.persona_id = ... group by emotion.name order by count desc
+                stmt_emotions = (
+                    select(Emotion.name, func.count(ThoughtEmotion.id).label('count'))
+                    .join(ThoughtEmotion)
+                    .join(Thought)
+                    .where(Thought.persona_id == persona_id)
+                    .group_by(Emotion.name)
+                    .order_by(func.count(ThoughtEmotion.id).desc())
+                    .limit(5)
+                )
+                emotions = session.execute(stmt_emotions).all()
+
+                # Top tags
+                stmt_tags = (
+                    select(Tag.name, func.count(ThoughtTag.id).label('count'))
+                    .join(ThoughtTag)
+                    .join(Thought)
+                    .where(Thought.persona_id == persona_id)
+                    .group_by(Tag.name)
+                    .order_by(func.count(ThoughtTag.id).desc())
+                    .limit(5)
+                )
+                tags = session.execute(stmt_tags).all()
+
+                return {
+                    "top_emotions": [e.name for e in emotions],
+                    "top_tags": [t.name for t in tags]
+                }
+        except Exception:
+             return {"top_emotions": [], "top_tags": []}
 
 def init_database():
-    from .models import init_db
-    init_db()
+    # from .models import init_db
+    # init_db()
+    pass
 
 def get_db():
-    return peewee_db
+    return SessionLocal

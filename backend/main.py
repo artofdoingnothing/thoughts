@@ -54,7 +54,9 @@ class ThoughtLinkCreate(BaseModel):
 
 @app.on_event("startup")
 def startup():
-    init_database()
+    pass 
+    # init_database() - Handled by Alembic
+
 
 @app.get("/")
 def read_root():

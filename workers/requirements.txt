@@ -1,6 +1,6 @@
 rq
 redis
-peewee
+sqlalchemy
 pydantic
 psycopg2-binary
 

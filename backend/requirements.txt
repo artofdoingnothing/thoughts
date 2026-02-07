@@ -1,6 +1,7 @@
 fastapi
 uvicorn
-peewee
+sqlalchemy
+alembic
 rq
 redis
 pydantic

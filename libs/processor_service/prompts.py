@@ -66,6 +66,8 @@ Constraints:
 - Continue the essay from the starting text.
 - Maximum 500 words.
 - Maintain the persona's voice.
+- The written text should contain the emotions and tags provided together. Do not use the original tone of the provided text.
+- Do not include the mentioned emotions and tags in the written text.
 - Return only the completion text. Do not repeat the starting text unless necessary for flow, but preferably just continue.
 
 Starting Text:

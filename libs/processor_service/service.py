@@ -1,5 +1,6 @@
 import json
 import ast
+import random
 from typing import List
 from libs.llm_service import LLMFactory
 from .prompts import COGNITIVE_DISTORTION_PROMPT, SENTIMENT_ANALYSIS_PROMPT, THOUGHT_GENERATION_PROMPT, ESSAY_GENERATION_PROMPT
@@ -48,7 +49,7 @@ class ProcessorService:
         prompt = ESSAY_GENERATION_PROMPT.format(
             starting_text=starting_text,
             persona_details=persona_details,
-            emotions=", ".join(emotions),
-            tags=", ".join(tags)
+            emotions=", ".join(random.sample(emotions, min(len(emotions), 2))),
+            tags=", ".join(random.sample(tags, min(len(tags), 2)))
         )
         return self.llm.generate_content(prompt)
