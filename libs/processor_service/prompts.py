@@ -3,7 +3,7 @@ COGNITIVE_DISTORTION_PROMPT = """
 You are a mental health assistant expert in Cognitive Behavioral Therapy (CBT).
 Analyze the following thought for Cognitive Distortions based on David Burns' definitions.
 Identify any distortions present. If none are found, return an empty list.
-Return the result strictly as a Python list of strings. Do not include any other text or explanation.
+Return the result strictly as a valid JSON list of strings. Do not include any other text or explanation.
 
 Known distortions:
 - All-or-nothing thinking
@@ -25,7 +25,7 @@ Output format: ["Distortion 1", "Distortion 2"]
 SENTIMENT_ANALYSIS_PROMPT = """
 You are an expert in emotion analysis.
 Analyze the following thought and identify the primary emotions associated with it.
-Return the result strictly as a Python list of strings. Do not include any other text or explanation.
+Return the result strictly as a valid JSON list of strings. Do not include any other text or explanation.
 
 Examples of emotions: Happy, Sad, Angry, Anxious, Fearful, Disgusted, Surprised, Neutral, Hopeful, Frustrated.
 
@@ -38,16 +38,17 @@ THOUGHT_GENERATION_PROMPT = """
 You are an AI assistant helping to extract thoughts from a blog post.
 Analyze the following text content from a blog post and extract distinct thoughts expressed by the author.
 A "thought" is a specific idea, opinion, or reflection.
+
 Constraints:
-- Extract at most 7 thoughts.
-- Each thought must be under 2 sentences.
-- Do not format the content or wording of the thoughts (no bullet points in the string itself, just the raw text).
-- Return the result strictly as a Python list of strings. Do not include any other text or explanation.
+- Extract complete thoughts or small paragraphs.
+- Do not split a single coherent thought into multiple small sentences.
+- Capture the full context of the thought.
+- Return the result strictly as a valid JSON list of strings. Do not include any other text or explanation.
 
 Blog Content:
 "{blog_content}"
 
-Output format: ["Thought 1", "Thought 2"]
+Output format: ["Thought 1 content...", "Thought 2 content..."]
 """
 
 ESSAY_GENERATION_PROMPT = """
@@ -72,4 +73,30 @@ Constraints:
 
 Starting Text:
 "{starting_text}"
+"""
+
+ACTION_ORIENTATION_PROMPT = """
+You are a behavioral psychologist.
+Analyze the following thought and classify it as either "Action-oriented" or "Ruminative".
+"Action-oriented" thoughts focus on planning, problem-solving, or taking steps forward.
+"Ruminative" thoughts focus on repetitive dwelling on negative feelings, past events, or abstract problems without a solution.
+
+Return the result strictly as a single string: "Action-oriented" or "Ruminative". Do not include any other text or explanation.
+
+Thought: "{thought_content}"
+
+Output:
+"""
+
+THOUGHT_TYPE_PROMPT = """
+You are a cognitive psychologist.
+Analyze the following thought and classify it as either "Automatic" or "Deliberate".
+"Automatic" thoughts are spontaneous, often habitual, and pop up without conscious effort.
+"Deliberate" thoughts are conscious, intentional, and require effortful processing.
+
+Return the result strictly as a single string: "Automatic" or "Deliberate". Do not include any other text or explanation.
+
+Thought: "{thought_content}"
+
+Output:
 """

@@ -66,7 +66,7 @@ export default function EssayGenerator() {
 
     return (
         <Box maxWidth="md" sx={{ mx: 'auto' }}>
-            <Typography variant="h4" sx={{ mb: 4, color: 'primary.main', fontWeight: 'bold' }}>Essay Generator</Typography>
+            <Typography variant="h4" sx={{ mb: 4, color: 'primary.main', fontWeight: 'bold' }}>ESSAY GENERATOR</Typography>
 
             <Paper sx={{ p: 4, mb: 4 }}>
                 <Stack spacing={3}>

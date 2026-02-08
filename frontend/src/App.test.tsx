@@ -5,11 +5,13 @@ import App from './App'
 describe('App', () => {
     it('renders the title', () => {
         render(<App />)
-        expect(screen.getByText(/Thought Aggregator/i)).toBeInTheDocument()
+        const titles = screen.getAllByText(/Thought Aggregator/i)
+        expect(titles.length).toBeGreaterThan(0)
+        expect(titles[0]).toBeInTheDocument()
     })
 
-    it('shows empty state message', () => {
+    it('shows welcome message', () => {
         render(<App />)
-        expect(screen.getByText(/No thoughts found/i)).toBeInTheDocument()
+        expect(screen.getByText(/Welcome/i)).toBeInTheDocument()
     })
 })

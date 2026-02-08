@@ -23,23 +23,20 @@ interface CreateThoughtModalProps {
 const AVAILABLE_EMOTIONS = ['Happy', 'Sad', 'Angry', 'Anxious', 'Excited', 'Calm'];
 
 const CreateThoughtModal: React.FC<CreateThoughtModalProps> = ({ open, onClose, onSuccess, apiBaseUrl }) => {
-    const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
-        if (!title || !content) return;
+        if (!content) return;
 
         setLoading(true);
         try {
             await axios.post(`${apiBaseUrl}/thoughts/`, {
-                title,
                 content,
                 emotions: selectedEmotions
             });
-            setTitle('');
             setContent('');
             setSelectedEmotions([]);
             onSuccess();
@@ -63,14 +60,6 @@ const CreateThoughtModal: React.FC<CreateThoughtModalProps> = ({ open, onClose, 
             <DialogTitle sx={{ fontWeight: 700, color: 'primary.main' }}>NEW THOUGHT</DialogTitle>
             <DialogContent>
                 <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <TextField
-                        label="Title"
-                        fullWidth
-                        required
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        disabled={loading}
-                    />
                     <TextField
                         label="Content"
                         fullWidth
@@ -105,7 +94,7 @@ const CreateThoughtModal: React.FC<CreateThoughtModalProps> = ({ open, onClose, 
                 <Button onClick={onClose} disabled={loading} color="inherit">Cancel</Button>
                 <Button
                     onClick={() => handleSubmit()}
-                    disabled={loading || !title || !content}
+                    disabled={loading || !content}
                     variant="contained"
                     color="primary"
                 >

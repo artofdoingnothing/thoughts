@@ -25,11 +25,12 @@ redis_conn = Redis(host=REDIS_HOST, port=REDIS_PORT)
 q = Queue(connection=redis_conn)
 
 class ThoughtCreate(BaseModel):
-    title: str
     content: str
     emotions: Optional[List[str]] = []
     is_generated: Optional[bool] = False
     persona_id: Optional[int] = None
+    action_orientation: Optional[str] = None
+    thought_type: Optional[str] = None
 
 class PersonaCreate(BaseModel):
     name: str
@@ -48,6 +49,8 @@ class ThoughtUpdate(BaseModel):
     status: Optional[str] = None
     emotions: Optional[List[str]] = None
     is_generated: Optional[bool] = None
+    action_orientation: Optional[str] = None
+    thought_type: Optional[str] = None
 
 class ThoughtLinkCreate(BaseModel):
     target_id: int
@@ -55,7 +58,7 @@ class ThoughtLinkCreate(BaseModel):
 @app.on_event("startup")
 def startup():
     pass 
-    # init_database() - Handled by Alembic
+    # init_database() - Handled by Alembic 
 
 
 @app.get("/")
@@ -65,11 +68,12 @@ def read_root():
 @app.post("/thoughts/")
 def create_thought(thought_data: ThoughtCreate):
     thought = ThoughtService.create_thought(
-        title=thought_data.title,
         content=thought_data.content,
         emotions=thought_data.emotions,
         is_generated=thought_data.is_generated,
-        persona_id=thought_data.persona_id
+        persona_id=thought_data.persona_id,
+        action_orientation=thought_data.action_orientation,
+        thought_type=thought_data.thought_type
     )
     
     # Enqueue background tasks
@@ -77,7 +81,15 @@ def create_thought(thought_data: ThoughtCreate):
     q_sentiment = Queue('sentiment', connection=redis_conn)
     
     q_distortions.enqueue("workers.tasks.analyze_cognitive_distortions", thought.id)
+    q_distortions.enqueue("workers.tasks.analyze_cognitive_distortions", thought.id)
     q_sentiment.enqueue("workers.tasks.analyze_sentiment", thought.id)
+    
+    # New classifiers
+    q_action = Queue('action_orientation', connection=redis_conn)
+    q_type = Queue('thought_type', connection=redis_conn)
+    q_action.enqueue("workers.tasks.analyze_action_orientation", thought.id)
+    q_type.enqueue("workers.tasks.analyze_thought_type", thought.id)
+
     return thought.dict()
 
 @app.get("/personas/", response_model=List[PersonaDomain])
@@ -92,10 +104,19 @@ def create_persona(persona: PersonaCreate):
         gender=persona.gender
     )
 
+@app.delete("/personas/{persona_id}")
+def delete_persona(persona_id: int):
+    success = ThoughtService.delete_persona(persona_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    return {"message": "Persona deleted successfully"}
+
 @app.post("/generate-thoughts/")
 def generate_thoughts(request: GenerateThoughtsRequest):
     q_generation = Queue('generation', connection=redis_conn)
+    print(f"Received request to generate thoughts for {len(request.urls)} URLs: {request.urls}")
     for url in request.urls:
+        print(f"Enqueuing task for {url}")
         q_generation.enqueue("workers.tasks.parse_blog_and_generate_thoughts", url, request.persona_id)
     return {"message": f"{len(request.urls)} thought generation tasks have been queued"}
 
@@ -161,8 +182,10 @@ def delete_thought(thought_id: int):
 @app.put("/thoughts/{thought_id}")
 def update_thought(thought_id: int, thought_update: dict):
     # Manually check for restricted fields
-    if 'title' in thought_update or 'content' in thought_update:
-        raise HTTPException(status_code=400, detail="Cannot update title or content")
+    if 'content' in thought_update:
+        # Check if only unrestricted fields are being updated
+        pass # Actually service handles mapping, but here we were restricting. allow other fields.
+        raise HTTPException(status_code=400, detail="Cannot update content")
     
     updated_thought = ThoughtService.update_thought(thought_id, thought_update)
     if not updated_thought:

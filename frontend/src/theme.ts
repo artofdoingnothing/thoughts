@@ -20,32 +20,32 @@ declare module '@mui/material/styles' {
 const theme = createTheme({
     palette: {
         primary: {
-            main: '#545775', // dusty-grape
-            light: '#718f94', // slate-grey (using as light var for now, or just auto)
+            main: '#8b0000', // dusty-grape
+            light: '#c10000', // slate-grey
             contrastText: '#ffffff',
         },
         secondary: {
-            main: '#90b494', // muted-teal
+            main: '#ff4949', // muted-teal
             contrastText: '#ffffff',
         },
         background: {
-            default: '#fdfbf7', // Very light version of pale-oak
+            default: '#eeeeee', // pale-oak
             paper: '#ffffff',
         },
         paleOak: {
-            main: '#dbcfb0',
+            main: '#eeeeee',
         },
         ashGrey: {
-            main: '#bfc8ad',
+            main: '#dedede',
         },
         mutedTeal: {
-            main: '#90b494',
+            main: '#ff4949',
         },
         slateGrey: {
-            main: '#718f94',
+            main: '#c10000',
         },
         dustyGrape: {
-            main: '#545775',
+            main: '#8b0000',
         },
     },
     typography: {
@@ -54,12 +54,12 @@ const theme = createTheme({
             fontWeight: 700,
             fontSize: '2.5rem',
             letterSpacing: '-0.02em',
-            color: '#545775', // dusty-grape
+            color: '#8b0000', // dusty-grape
         },
         h4: {
             fontWeight: 600,
             letterSpacing: '0.05em',
-            color: '#718f94', // slate-grey
+            color: '#c10000', // slate-grey
         },
         button: {
             fontWeight: 600,
@@ -75,11 +75,11 @@ const theme = createTheme({
                     padding: '10px 24px',
                     boxShadow: 'none',
                     '&:hover': {
-                        boxShadow: '0 4px 12px rgba(84, 87, 117, 0.2)', // dusty-grape shadow
+                        boxShadow: '0 4px 12px rgba(139, 0, 0, 0.2)', // dusty-grape shadow
                     },
                 },
                 containedPrimary: {
-                    background: 'linear-gradient(135deg, #545775 0%, #718f94 100%)', // dusty-grape to slate-grey
+                    background: 'linear-gradient(135deg, #8b0000 0%, #c10000 100%)', // dusty-grape to slate-grey
                 },
             },
         },
@@ -88,7 +88,7 @@ const theme = createTheme({
                 root: {
                     borderRadius: '16px',
                     boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                    border: '1px solid rgba(219, 207, 176, 0.3)', // pale-oak border
+                    border: '1px solid rgba(238, 238, 238, 0.5)', // pale-oak border
                 },
             },
         },

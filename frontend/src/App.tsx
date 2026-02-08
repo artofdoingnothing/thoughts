@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
-import Home from './pages/Home';
+import HomePage from './pages/HomePage';
+import Thoughts from './pages/Thoughts';
 import Personas from './pages/Personas';
 import BlogGenerator from './pages/BlogGenerator';
 import EssayGenerator from './pages/EssayGenerator';
@@ -22,7 +23,8 @@ function App() {
     <Router>
       <Layout onNewThought={() => setIsModalOpen(true)}>
         <Routes>
-          <Route path="/" element={<Home refreshKey={refreshKey} />} />
+          <Route path="/" element={<HomePage />} />
+          <Route path="/thoughts" element={<Thoughts refreshKey={refreshKey} />} />
           <Route path="/personas" element={<Personas />} />
           <Route path="/generate" element={<BlogGenerator />} />
           <Route path="/essay" element={<EssayGenerator />} />

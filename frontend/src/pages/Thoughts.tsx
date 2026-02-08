@@ -11,7 +11,7 @@ interface HomeProps {
     refreshKey: number;
 }
 
-export default function Home({ refreshKey }: HomeProps) {
+function Thoughts({ refreshKey }: HomeProps) {
     const [thoughts, setThoughts] = useState<Thought[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -73,10 +73,7 @@ export default function Home({ refreshKey }: HomeProps) {
     return (
         <Box sx={{ mb: 4 }}>
             <Typography variant="h4" sx={{ mb: 2, fontWeight: 'bold', color: 'primary.main' }}>
-                MY THOUGHTS
-            </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                Aggregating your stream of consciousness.
+                THOUGHTS
             </Typography>
 
             {loading && <LinearProgress sx={{ mb: 2 }} />}
@@ -108,3 +105,5 @@ export default function Home({ refreshKey }: HomeProps) {
         </Box>
     );
 }
+
+export default Thoughts;

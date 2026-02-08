@@ -1,9 +1,10 @@
 import json
 import ast
 import random
+import re
 from typing import List
 from libs.llm_service import LLMFactory
-from .prompts import COGNITIVE_DISTORTION_PROMPT, SENTIMENT_ANALYSIS_PROMPT, THOUGHT_GENERATION_PROMPT, ESSAY_GENERATION_PROMPT
+from .prompts import COGNITIVE_DISTORTION_PROMPT, SENTIMENT_ANALYSIS_PROMPT, THOUGHT_GENERATION_PROMPT, ESSAY_GENERATION_PROMPT, ACTION_ORIENTATION_PROMPT, THOUGHT_TYPE_PROMPT
 
 class ProcessorService:
     def __init__(self):
@@ -14,14 +15,24 @@ class ProcessorService:
         try:
             # First clean up any potential markdown code blocks
             output = output.strip()
-            if output.startswith("```"):
-                output = output.splitlines()[1] if len(output.splitlines()) > 1 else output
-                if output.startswith("python") or output.startswith("json"):
-                     output = output[6:] if output.startswith("python") else output[4:]
-                if output.endswith("```"):
-                     output = output[:-3]
+            # Use regex to extract content from markdown code blocks
+            # Matches ``` followed by optional language identifier, then content, then ```
+            # re.DOTALL allows . to match newlines
+            match = re.search(r"```(?:\w+)?\s*(.*?)```", output, re.DOTALL)
+            if match:
+                output = match.group(1).strip()
             
-            # Use ast.literal_eval for safe evaluation of python-like list strings
+            output = output.strip()
+            
+            # Try JSON parsing first as it is safer and standard
+            try:
+                result = json.loads(output)
+                if isinstance(result, list):
+                    return [str(item) for item in result]
+            except json.JSONDecodeError:
+                pass
+
+            # Fallback to ast.literal_eval for python-like list strings
             result = ast.literal_eval(output)
             if isinstance(result, list):
                 return [str(item) for item in result]
@@ -44,6 +55,27 @@ class ProcessorService:
         prompt = THOUGHT_GENERATION_PROMPT.format(blog_content=text)
         result = self.llm.generate_content(prompt)
         return self._parse_list_output(result)
+
+    def analyze_action_orientation(self, thought_content: str) -> str:
+        prompt = ACTION_ORIENTATION_PROMPT.format(thought_content=thought_content)
+        result = self.llm.generate_content(prompt)
+        cleaned = result.strip().replace('"', '').replace("'", "")
+        # Basic validation
+        if "Action-oriented" in cleaned:
+             return "Action-oriented"
+        if "Ruminative" in cleaned:
+             return "Ruminative"
+        return cleaned
+
+    def analyze_thought_type(self, thought_content: str) -> str:
+        prompt = THOUGHT_TYPE_PROMPT.format(thought_content=thought_content)
+        result = self.llm.generate_content(prompt)
+        cleaned = result.strip().replace('"', '').replace("'", "")
+        if "Automatic" in cleaned:
+             return "Automatic"
+        if "Deliberate" in cleaned:
+             return "Deliberate"
+        return cleaned
 
     def generate_essay(self, starting_text: str, persona_details: str, emotions: List[str], tags: List[str]) -> str:
         prompt = ESSAY_GENERATION_PROMPT.format(

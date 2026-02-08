@@ -52,8 +52,7 @@ const Row: React.FC<{
                     {thought.id}
                 </TableCell>
                 <TableCell sx={{ fontWeight: 500, cursor: 'pointer', maxWidth: 400 }} onClick={toggleExpand}>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>{thought.title}</Typography>
-                    <Typography variant="caption" color="text.secondary" noWrap display="block">
+                    <Typography variant="body2" color="text.primary" noWrap display="block">
                         {thought.content}
                     </Typography>
                 </TableCell>
@@ -72,6 +71,28 @@ const Row: React.FC<{
                             <Chip icon={<PersonIcon sx={{ fontSize: 16 }} />} label="User" size="small" variant="outlined" />
                         )}
                     </Box>
+                </TableCell>
+                <TableCell>
+                    {thought.thought_type && (
+                        <Chip
+                            label={thought.thought_type}
+                            size="small"
+                            variant="outlined"
+                            color="primary"
+                            sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}
+                        />
+                    )}
+                </TableCell>
+                <TableCell>
+                    {thought.action_orientation && (
+                        <Chip
+                            label={thought.action_orientation}
+                            size="small"
+                            variant="outlined"
+                            color="info"
+                            sx={{ fontWeight: 'bold', fontSize: '0.7rem' }}
+                        />
+                    )}
                 </TableCell>
                 <TableCell>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
@@ -105,7 +126,7 @@ const Row: React.FC<{
                 </TableCell>
             </TableRow>
             <TableRow>
-                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={9}>
                     <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                         <Box sx={{ margin: 2, p: 2, bgcolor: 'background.paper', borderRadius: 2, border: 1, borderColor: 'divider' }}>
                             <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'block', mb: 1 }}>
@@ -143,9 +164,11 @@ const ThoughtTable: React.FC<ThoughtTableProps> = ({ thoughts, expandedThoughtId
                     <TableRow>
                         <TableCell sx={{ width: 40 }} />
                         <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
-                        <TableCell sx={{ fontWeight: 'bold' }}>TITLE</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>CONTENT</TableCell>
                         <TableCell sx={{ fontWeight: 'bold' }}>STATUS</TableCell>
                         <TableCell sx={{ fontWeight: 'bold' }}>SRC</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>TYPE</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>ACTION</TableCell>
                         <TableCell sx={{ fontWeight: 'bold' }}>EMOTIONS</TableCell>
                         <TableCell sx={{ fontWeight: 'bold' }}>TAGS</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 'bold' }}>ACTIONS</TableCell>
@@ -163,7 +186,7 @@ const ThoughtTable: React.FC<ThoughtTableProps> = ({ thoughts, expandedThoughtId
                     ))}
                     {thoughts.length === 0 && (
                         <TableRow>
-                            <TableCell colSpan={8} align="center" sx={{ py: 8 }}>
+                            <TableCell colSpan={9} align="center" sx={{ py: 8 }}>
                                 <Typography variant="body1" color="text.secondary" fontStyle="italic">
                                     No thoughts found. Start by creating one.
                                 </Typography>

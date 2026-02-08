@@ -18,10 +18,11 @@ export interface Persona {
 
 export interface Thought {
     id: number;
-    title: string;
     content: string;
     status: string;
     is_generated: boolean;
+    action_orientation?: string;
+    thought_type?: string;
     created_at: string;
     updated_at: string;
     emotions: Emotion[];

@@ -21,15 +21,16 @@ class Persona(Base):
     age = Column(Integer)
     gender = Column(String)
     
-    thoughts = relationship("Thought", back_populates="persona")
+    thoughts = relationship("Thought", back_populates="persona", cascade="all, delete-orphan")
 
 class Thought(Base):
     __tablename__ = "thought"
     id = Column(Integer, primary_key=True, index=True)
-    title = Column(String)
     content = Column(Text)
     status = Column(String, default="pending")
     is_generated = Column(Boolean, default=False)
+    action_orientation = Column(String, nullable=True)
+    thought_type = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
     persona_id = Column(Integer, ForeignKey("persona.id"), nullable=True)

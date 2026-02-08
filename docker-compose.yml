@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   redis:
@@ -117,6 +117,46 @@ services:
     volumes:
       - .:/app
 
+  worker-action-orientation:
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DATABASE_URL=postgresql://user:password@postgres:5432/thoughts
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - QUEUES=action_orientation
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      api:
+        condition: service_started
+    volumes:
+      - .:/app
+
+  worker-thought-type:
+    build:
+      context: .
+      dockerfile: workers/Dockerfile
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DATABASE_URL=postgresql://user:password@postgres:5432/thoughts
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - QUEUES=thought_type
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      api:
+        condition: service_started
+    volumes:
+      - .:/app
+
   frontend:
     build:
       context: ./frontend
@@ -131,4 +171,3 @@ services:
 
 volumes:
   postgres_data:
-

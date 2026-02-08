@@ -52,7 +52,7 @@ export default function BlogGenerator() {
 
     return (
         <Box maxWidth="sm">
-            <Typography variant="h4" sx={{ mb: 4, color: 'primary.main', fontWeight: 'bold' }}>Generate Thoughts from Blog</Typography>
+            <Typography variant="h4" sx={{ mb: 4, color: 'primary.main', fontWeight: 'bold' }}>BLOG GENERATOR</Typography>
 
             {message && <Alert severity="info" sx={{ mb: 2 }}>{message}</Alert>}
 

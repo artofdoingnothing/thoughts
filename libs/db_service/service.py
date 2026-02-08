@@ -25,10 +25,11 @@ class PersonaDomain(PydanticBaseModel):
 
 class ThoughtDomain(PydanticBaseModel):
     id: int
-    title: str
     content: str
     status: str
     is_generated: bool
+    action_orientation: Optional[str] = None
+    thought_type: Optional[str] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     emotions: List[EmotionDomain] = []
@@ -44,10 +45,11 @@ class ThoughtService:
     def _map_to_domain(thought: Thought) -> ThoughtDomain:
         return ThoughtDomain(
             id=thought.id,
-            title=thought.title,
             content=thought.content,
             status=thought.status,
             is_generated=thought.is_generated,
+            action_orientation=thought.action_orientation,
+            thought_type=thought.thought_type,
             created_at=thought.created_at,
             updated_at=thought.updated_at,
             emotions=[EmotionDomain(name=te.emotion.name, is_generated=te.is_generated) for te in thought.emotions],
@@ -78,17 +80,26 @@ class ThoughtService:
             return PersonaDomain.model_validate(persona) if persona else None
 
     @classmethod
-    def create_thought(cls, title: str, content: str, emotions: List[str] = [], is_generated: bool = False, persona_id: Optional[int] = None) -> ThoughtDomain:
+    def create_thought(
+        cls, 
+        content: str, 
+        emotions: List[str] = [], 
+        is_generated: bool = False, 
+        persona_id: Optional[int] = None,
+        action_orientation: Optional[str] = None,
+        thought_type: Optional[str] = None
+    ) -> ThoughtDomain:
         with SessionLocal() as session:
             persona = None
             if persona_id:
                 persona = session.get(Persona, persona_id)
 
             thought = Thought(
-                title=title,
                 content=content,
                 is_generated=is_generated,
-                persona_id=persona.id if persona else None
+                persona_id=persona.id if persona else None,
+                action_orientation=action_orientation,
+                thought_type=thought_type
             )
             session.add(thought)
             session.flush() # Flush to get ID
@@ -297,10 +308,23 @@ class ThoughtService:
             return False
 
     @classmethod
+    def delete_persona(cls, persona_id: int) -> bool:
+        try:
+            with SessionLocal() as session:
+                persona = session.get(Persona, persona_id)
+                if not persona:
+                    return False
+                session.delete(persona)
+                session.commit()
+                return True
+        except Exception:
+            return False
+
+    @classmethod
     def update_thought(cls, thought_id: int, updates: dict) -> Optional[ThoughtDomain]:
         try:
             with SessionLocal() as session:
-                valid_updates = {k: v for k, v in updates.items() if k not in ['title', 'content', 'id', 'created_at']}
+                valid_updates = {k: v for k, v in updates.items() if k not in ['content', 'id', 'created_at']}
                 
                 if not valid_updates and not updates:
                      # Just return current
