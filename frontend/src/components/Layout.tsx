@@ -1,19 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
     Box,
-    Drawer,
-    List,
-    ListItem,
-    ListItemButton,
-    ListItemIcon,
-    ListItemText,
+    AppBar,
+    Toolbar,
     Button,
-    IconButton,
-    useMediaQuery,
-    useTheme,
-    Container
+    Container,
+    Typography
 } from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import HomeIcon from '@mui/icons-material/Home';
 import NotesIcon from '@mui/icons-material/Notes';
@@ -27,121 +20,82 @@ interface LayoutProps {
     onNewThought: () => void;
 }
 
-const drawerWidth = 240;
-
 const Layout: React.FC<LayoutProps> = ({ children, onNewThought }) => {
-    const [mobileOpen, setMobileOpen] = useState(false);
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const location = useLocation();
-
-    const handleDrawerToggle = () => {
-        setMobileOpen(!mobileOpen);
-    };
 
     const showNewThoughtButton = location.pathname === '/' || location.pathname === '/thoughts';
 
-    const drawer = (
-        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
-            <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1, color: 'primary.main' }}>
-                <AutoAwesomeIcon />
-                <Box sx={{ fontWeight: 700, letterSpacing: '.1rem', textTransform: 'uppercase' }}>
-                    Thought Aggregator
-                </Box>
-            </Box>
-            <List>
-                {[
-                    { text: 'Home', icon: <HomeIcon />, path: '/' },
-                    { text: 'Thoughts', icon: <NotesIcon />, path: '/thoughts' },
-                    { text: 'Personas', icon: <PersonIcon />, path: '/personas' },
-                    { text: 'Generate', icon: <CreateIcon />, path: '/generate' },
-                    { text: 'Essay', icon: <ArticleIcon />, path: '/essay' },
-                ].map((item) => (
-                    <ListItem key={item.text} disablePadding>
-                        <ListItemButton component={RouterLink} to={item.path} onClick={() => isMobile && setMobileOpen(false)}>
-                            <ListItemIcon sx={{ color: 'primary.main' }}>
-                                {item.icon}
-                            </ListItemIcon>
-                            <ListItemText primary={item.text} sx={{ color: 'text.primary' }} />
-                        </ListItemButton>
-                    </ListItem>
-                ))}
-            </List>
-            <Box sx={{ flexGrow: 1 }} />
-        </Box>
-    );
+    const navItems = [
+        { text: 'Home', icon: <HomeIcon />, path: '/' },
+        { text: 'Thoughts', icon: <NotesIcon />, path: '/thoughts' },
+        { text: 'Personas', icon: <PersonIcon />, path: '/personas' },
+        { text: 'Generate', icon: <CreateIcon />, path: '/generate' },
+        { text: 'Essay', icon: <ArticleIcon />, path: '/essay' },
+    ];
 
     return (
-        <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
-            {/* Hamburger Button (Always Visible) */}
-            <IconButton
-                color="inherit"
-                aria-label="open drawer"
-                edge="start"
-                onClick={handleDrawerToggle}
-                sx={{
-                    position: 'fixed',
-                    top: 16,
-                    left: 16,
-                    zIndex: theme.zIndex.drawer + 2,
-                    bgcolor: 'background.paper',
-                    boxShadow: 1,
-                    '&:hover': { bgcolor: 'background.paper' },
-                    display: mobileOpen ? 'none' : 'flex' // Hide when drawer is open if it overlaps, or keep it.
-                    // Actually, if we want it to "slide out", typically the button stays or moves.
-                    // Let's keep it simple: button opens drawer.
-                }}
-            >
-                <MenuIcon color="primary" />
-            </IconButton>
+        <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
+            <AppBar position="sticky" color="inherit" elevation={1}>
+                <Container maxWidth="xl">
+                    <Toolbar disableGutters>
+                        <AutoAwesomeIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1, color: 'primary.main' }} />
+                        <Typography
+                            variant="h6"
+                            noWrap
+                            component={RouterLink}
+                            to="/"
+                            sx={{
+                                mr: 2,
+                                display: { xs: 'none', md: 'flex' },
+                                fontFamily: 'monospace',
+                                fontWeight: 700,
+                                letterSpacing: '.3rem',
+                                color: 'primary.main',
+                                textDecoration: 'none',
+                                flexGrow: 0
+                            }}
+                        >
+                            THOUGHT AGGREGATOR
+                        </Typography>
 
-             {/* New Thought Button (Top Right) */}
-             {showNewThoughtButton && (
-                <Button
-                    variant="contained"
-                    onClick={onNewThought}
-                    startIcon={<AutoAwesomeIcon />}
-                    sx={{
-                        position: 'fixed',
-                        top: 16,
-                        right: 16,
-                        zIndex: theme.zIndex.drawer + 1,
-                    }}
-                >
-                    New Thought
-                </Button>
-            )}
+                        <Box sx={{ flexGrow: 1, display: 'flex', gap: 1 }}>
+                            {navItems.map((item) => (
+                                <Button
+                                    key={item.text}
+                                    component={RouterLink}
+                                    to={item.path}
+                                    startIcon={item.icon}
+                                    sx={{
+                                        my: 2,
+                                        color: location.pathname === item.path ? 'primary.main' : 'text.primary',
+                                        display: 'flex'
+                                    }}
+                                >
+                                    {item.text}
+                                </Button>
+                            ))}
+                        </Box>
 
-            <Drawer
-                variant="temporary"
-                open={mobileOpen}
-                onClose={handleDrawerToggle}
-                ModalProps={{
-                    keepMounted: true, // Better open performance on mobile.
-                }}
-                sx={{
-                    '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
-                }}
-            >
-                {drawer}
-            </Drawer>
+                        {showNewThoughtButton && (
+                            <Button
+                                variant="contained"
+                                onClick={onNewThought}
+                                startIcon={<AutoAwesomeIcon />}
+                                sx={{ ml: 2 }}
+                            >
+                                New Thought
+                            </Button>
+                        )}
+                    </Toolbar>
+                </Container>
+            </AppBar>
 
             <Box
                 component="main"
                 sx={{
                     flexGrow: 1,
                     p: 3,
-                    mt: 8, // Space for the floating buttons
                     width: '100%',
-                    transition: theme.transitions.create(['margin', 'width'], {
-                        easing: theme.transitions.easing.sharp,
-                        duration: theme.transitions.duration.leavingScreen,
-                    }),
-                    ...(mobileOpen && !isMobile && {
-                        // If we wanted a persistent drawer that pushes content, we'd use variant="persistent"
-                        // The user said: "clicking on it should slide out a side navigation pushing the main window to the right."
-                        // This implies variant="persistent".
-                    }),
                 }}
             >
                  <Container maxWidth="xl">

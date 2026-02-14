@@ -9,11 +9,21 @@ export interface Tag {
 }
 
 
+export interface Topic {
+    name: string;
+    is_generated: boolean;
+}
+
+
 export interface Persona {
     id: number;
     name: string;
     age: number;
     gender: string;
+    profile?: {
+        topics: { name: string; emotions: string[] }[];
+        thought_patterns: string;
+    };
 }
 
 export interface Thought {
@@ -27,6 +37,7 @@ export interface Thought {
     updated_at: string;
     emotions: Emotion[];
     tags: Tag[];
+    topics: Topic[];
     links: number[];
     persona?: Persona;
 }

@@ -6,6 +6,7 @@ from redis import Redis
 from rq import Queue
 import os
 import re
+import random
 
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
@@ -74,6 +75,22 @@ def analyze_thought_type(thought_id):
     ThoughtService.update_thought(thought_id, {"thought_type": result})
     print(f"Updated thought {thought_id} with thought type")
 
+def analyze_topics(thought_id):
+    print(f"Analyzing topics for thought {thought_id}...")
+    thought = ThoughtService.get_thought(thought_id)
+    if not thought:
+        print(f"Thought {thought_id} not found.")
+        return
+
+    topics = processor.analyze_topics(thought.content)
+    print(f"Identified topics: {topics}")
+    
+    if topics:
+        ThoughtService.add_topics(thought_id, topics, is_generated=True)
+        print(f"Added topics to thought {thought_id}")
+    
+    ThoughtService.update_status(thought_id, "completed")
+
 def parse_blog_and_generate_thoughts(url, persona_id):
     print(f"STARTING: Parsing blog {url} for persona {persona_id}...")
     response = requests.get(url, timeout=10)
@@ -99,6 +116,7 @@ def parse_blog_and_generate_thoughts(url, persona_id):
     q_sentiment = Queue('sentiment', connection=redis_conn)
     q_action = Queue('action_orientation', connection=redis_conn)
     q_type = Queue('thought_type', connection=redis_conn)
+    q_topics = Queue('topics', connection=redis_conn)
 
     for i, content in enumerate(thoughts):
         
@@ -115,6 +133,7 @@ def parse_blog_and_generate_thoughts(url, persona_id):
         q_sentiment.enqueue("workers.tasks.analyze_sentiment", thought.id)
         q_action.enqueue("workers.tasks.analyze_action_orientation", thought.id)
         q_type.enqueue("workers.tasks.analyze_thought_type", thought.id)
+        q_topics.enqueue("workers.tasks.analyze_topics", thought.id)
 
 def generate_essay(persona_id, starting_text):
     print(f"Generating essay for persona {persona_id}...")
@@ -123,16 +142,61 @@ def generate_essay(persona_id, starting_text):
             print(f"Persona {persona_id} not found.")
             return "Error: Persona not found"
 
-    metrics = ThoughtService.get_persona_metrics(persona_id)
-    
     persona_details = f"Name: {persona.name}, Age: {persona.age}, Gender: {persona.gender}"
     
-    essay = processor.generate_essay(
-        starting_text=starting_text,
-        persona_details=persona_details,
-        emotions=metrics['top_emotions'],
-        tags=metrics['top_tags']
-    )
-    print(f"Generated essay of length {len(essay)}")
-    return essay
+    # Check if persona has a profile (derived persona)
+    if persona.profile:
+        print(f"Persona {persona_id} has a profile. Using profile-based generation.")
+        
+        # Step 1: Extract relevant emotions from profile based on starting text
+        emotions = processor.extract_emotions_from_profile(starting_text, persona.profile)
+        print(f"Extracted emotions from profile: {emotions}")
+        
+        # Step 2: Complete essay using profile context
+        final_essay = processor.complete_essay_with_profile(
+            starting_text=starting_text,
+            persona_details=persona_details,
+            emotions=emotions
+        )
+    else:
+        print(f"Persona {persona_id} has no profile. Using standard generation.")
+        unique_attrs = ThoughtService.get_persona_unique_attributes(persona_id)
+        
+        thought_types = unique_attrs.get("thought_types", [])
+        action_orientations = unique_attrs.get("action_orientations", [])
+        
+        selected_type = random.choice(thought_types) if thought_types else "Automatic"
+        selected_action = random.choice(action_orientations) if action_orientations else "Ruminative"
+        
+        print(f"Selected attributes: Type={selected_type}, Action={selected_action}")
+        
+        # Step 1: Generate draft and tags
+        draft_result = processor.generate_essay_draft_and_tags(
+            starting_text=starting_text,
+            persona_details=persona_details,
+            thought_type=selected_type,
+            action_orientation=selected_action
+        )
+        
+        draft_essay = draft_result.get("essay", "")
+        generated_tags = draft_result.get("tags", [])
+        print(f"Generated draft essay length: {len(draft_essay)}. Tags: {generated_tags}")
+        
+        final_essay = draft_essay
+        
+        # Step 2: Find closest thought and modify
+        if generated_tags:
+            closest_thought = ThoughtService.find_closest_thought_by_tags(generated_tags, persona_id)
+            if closest_thought:
+                print(f"Found closest thought: {closest_thought.id}")
+                # Extract emotion names
+                emotions = [e.name for e in closest_thought.emotions]
+                if emotions:
+                     print(f"Modifying essay with emotions: {emotions}")
+                     final_essay = processor.modify_essay(draft_essay, emotions)
+            else:
+                print("No closest thought found.")
+            
+    print(f"Final essay length: {len(final_essay)}")
+    return final_essay
 

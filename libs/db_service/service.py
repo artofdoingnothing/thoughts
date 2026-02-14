@@ -3,7 +3,10 @@ from datetime import datetime
 from sqlalchemy import create_engine, select, func, update, delete
 from sqlalchemy.orm import sessionmaker, Session, joinedload
 from pydantic import BaseModel as PydanticBaseModel
-from .models import Thought, Tag, ThoughtTag, Emotion, ThoughtEmotion, ThoughtLink, Persona, SessionLocal
+from .models import Thought, Tag, ThoughtTag, Emotion, ThoughtEmotion, ThoughtLink, Persona, Topic, ThoughtTopic, SessionLocal
+import random
+import json
+from libs.llm_service.gemini import GeminiLLM
 
 # Domain models (DTOs)
 class TagDomain(PydanticBaseModel):
@@ -14,11 +17,16 @@ class EmotionDomain(PydanticBaseModel):
     name: str
     is_generated: bool
 
+class TopicDomain(PydanticBaseModel):
+    name: str
+    is_generated: bool
+
 class PersonaDomain(PydanticBaseModel):
     id: int
     name: str
     age: int
     gender: str
+    profile: Optional[Dict[str, Any]] = None
 
     class Config:
         from_attributes = True
@@ -34,6 +42,7 @@ class ThoughtDomain(PydanticBaseModel):
     updated_at: Optional[datetime] = None
     emotions: List[EmotionDomain] = []
     tags: List[TagDomain] = []
+    topics: List[TopicDomain] = []
     links: List[int] = []
     persona: Optional[PersonaDomain] = None
 
@@ -54,6 +63,7 @@ class ThoughtService:
             updated_at=thought.updated_at,
             emotions=[EmotionDomain(name=te.emotion.name, is_generated=te.is_generated) for te in thought.emotions],
             tags=[TagDomain(name=tt.tag.name, is_generated=tt.is_generated) for tt in thought.tags],
+            topics=[TopicDomain(name=tt.topic.name, is_generated=tt.is_generated) for tt in thought.topics],
             links=[tl.target_thought.id for tl in thought.links_from],
             persona=PersonaDomain.model_validate(thought.persona) if thought.persona else None
         )
@@ -130,6 +140,7 @@ class ThoughtService:
             stmt = select(Thought).where(Thought.id == thought.id).options(
                 joinedload(Thought.emotions).joinedload(ThoughtEmotion.emotion),
                 joinedload(Thought.tags).joinedload(ThoughtTag.tag),
+                joinedload(Thought.topics).joinedload(ThoughtTopic.topic),
                 joinedload(Thought.links_from).joinedload(ThoughtLink.target_thought),
                 joinedload(Thought.persona)
             )
@@ -142,6 +153,7 @@ class ThoughtService:
             query = select(Thought).options(
                 joinedload(Thought.emotions).joinedload(ThoughtEmotion.emotion),
                 joinedload(Thought.tags).joinedload(ThoughtTag.tag),
+                joinedload(Thought.topics).joinedload(ThoughtTopic.topic),
                 joinedload(Thought.links_from).joinedload(ThoughtLink.target_thought),
                 joinedload(Thought.persona)
             )
@@ -192,6 +204,7 @@ class ThoughtService:
             stmt = select(Thought).where(Thought.id == thought_id).options(
                 joinedload(Thought.emotions).joinedload(ThoughtEmotion.emotion),
                 joinedload(Thought.tags).joinedload(ThoughtTag.tag),
+                joinedload(Thought.topics).joinedload(ThoughtTopic.topic),
                 joinedload(Thought.links_from).joinedload(ThoughtLink.target_thought),
                 joinedload(Thought.persona)
             )
@@ -247,6 +260,33 @@ class ThoughtService:
                     if not session.scalar(stmt_te):
                         te = ThoughtEmotion(thought_id=thought.id, emotion_id=emotion.id, is_generated=is_generated)
                         session.add(te)
+                session.commit()
+                return True
+        except Exception:
+            return False
+
+    @classmethod
+    def add_topics(cls, thought_id: int, topics_list: List[str], is_generated: bool = False) -> bool:
+        try:
+            with SessionLocal() as session:
+                thought = session.get(Thought, thought_id)
+                if not thought:
+                    return False
+                
+                for topic_name in topics_list:
+                    topic = session.scalar(select(Topic).where(Topic.name == topic_name.lower()))
+                    if not topic:
+                        topic = Topic(name=topic_name.lower())
+                        session.add(topic)
+                        session.flush()
+                    
+                    stmt_tt = select(ThoughtTopic).where(
+                        ThoughtTopic.thought_id == thought.id,
+                        ThoughtTopic.topic_id == topic.id
+                    )
+                    if not session.scalar(stmt_tt):
+                        tt = ThoughtTopic(thought_id=thought.id, topic_id=topic.id, is_generated=is_generated)
+                        session.add(tt)
                 session.commit()
                 return True
         except Exception:
@@ -383,6 +423,139 @@ class ThoughtService:
                 }
         except Exception:
              return {"top_emotions": [], "top_tags": []}
+
+    @classmethod
+    def get_persona_unique_attributes(cls, persona_id: int) -> dict:
+        try:
+            with SessionLocal() as session:
+                # Get distinct values
+                stmt_types = select(Thought.thought_type).where(Thought.persona_id == persona_id).distinct()
+                stmt_actions = select(Thought.action_orientation).where(Thought.persona_id == persona_id).distinct()
+                
+                types = session.scalars(stmt_types).all()
+                actions = session.scalars(stmt_actions).all()
+                
+                return {
+                    "thought_types": [t for t in types if t],
+                    "action_orientations": [a for a in actions if a]
+                }
+        except Exception:
+            return {"thought_types": [], "action_orientations": []}
+
+    @classmethod
+    def find_closest_thought_by_tags(cls, tags: List[str], persona_id: int) -> Optional[ThoughtDomain]:
+        if not tags:
+            return None
+            
+        try:
+            with SessionLocal() as session:
+                # Find thought with most matching tags
+                # Select thought_id, count(tag_id) from thought_tag join tag where tag.name in tags group by thought_id order by count desc limit 1
+                stmt = (
+                    select(Thought)
+                    .join(ThoughtTag)
+                    .join(Tag)
+                    .where(
+                        Thought.persona_id == persona_id,
+                        Tag.name.in_([t.lower() for t in tags])
+                    )
+                    .group_by(Thought.id)
+                    .order_by(func.count(ThoughtTag.id).desc())
+                    .limit(1)
+                    .options(
+                        joinedload(Thought.emotions).joinedload(ThoughtEmotion.emotion),
+                        joinedload(Thought.tags).joinedload(ThoughtTag.tag),
+                        joinedload(Thought.topics).joinedload(ThoughtTopic.topic),
+                        joinedload(Thought.links_from).joinedload(ThoughtLink.target_thought),
+                        joinedload(Thought.persona)
+                    )
+                )
+                
+                thought = session.scalar(stmt)
+                return cls._map_to_domain(thought) if thought else None
+        except Exception as e:
+            print(f"Error finding closest thought: {e}")
+            return None
+
+    @classmethod
+    def derive_persona(cls, source_persona_id: int, name_adjective: str, percentage: int) -> Optional[PersonaDomain]:
+        try:
+            with SessionLocal() as session:
+                source_persona = session.get(Persona, source_persona_id)
+                if not source_persona:
+                    return None
+
+                # Fetch all thoughts
+                thoughts = session.scalars(select(Thought).where(Thought.persona_id == source_persona_id)).all()
+                if not thoughts:
+                    # Allow deriving even if no thoughts, maybe? But the requirement says "from a limited set of random thoughts"
+                    # If no thoughts, we can't derive based on thoughts.
+                    # But maybe we just clone with new name?
+                    # Let's return None for now as it seems to rely on thoughts.
+                    return None 
+
+                # Sample thoughts
+                k = int(len(thoughts) * (percentage / 100))
+                # Ensure at least 1 thought if available, or if percentage is 0, then 0?
+                # User inputs percentage.
+                if k < 1 and percentage > 0: k = 1
+                sampled_thoughts = random.sample(thoughts, min(k, len(thoughts)))
+
+                if not sampled_thoughts:
+                     thought_texts = []
+                else:
+                    thought_texts = [t.content for t in sampled_thoughts]
+                
+                # Construct Prompt
+                llm = GeminiLLM()
+                prompt = f"""
+                Analyze the following thoughts from a persona:
+                {json.dumps(thought_texts)}
+
+                Create a generalized profile for a new persona based on these thoughts.
+                The specific topics should be merged into broader, generalized topics.
+                Map the emotions from the thoughts to these new generalized topics.
+                Limit to at most 5 generalized topics.
+
+                Return ONLY a valid JSON object with the following structure:
+                {{
+                    "topics": [
+                        {{
+                            "name": "Generalized Topic Name",
+                            "emotions": ["emotion1", "emotion2"]
+                        }}
+                    ],
+                    "thought_patterns": "Brief summary of thought patterns"
+                }}
+                """
+                
+                response_text = llm.generate_content(prompt)
+                
+                # Cleanup potential markdown formatting
+                if "```json" in response_text:
+                    response_text = response_text.split("```json")[1].split("```")[0].strip()
+                elif "```" in response_text:
+                     response_text = response_text.split("```")[1].split("```")[0].strip()
+                
+                profile_data = json.loads(response_text)
+
+                new_name = f"{name_adjective} {source_persona.name}"
+                
+                new_persona = Persona(
+                    name=new_name,
+                    age=source_persona.age,
+                    gender=source_persona.gender,
+                    profile=profile_data
+                )
+                session.add(new_persona)
+                session.commit()
+                session.refresh(new_persona)
+                
+                return PersonaDomain.model_validate(new_persona)
+
+        except Exception as e:
+            print(f"Error deriving persona: {e}")
+            return None
 
 def init_database():
     # from .models import init_db

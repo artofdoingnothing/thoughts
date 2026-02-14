@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Table, create_engine
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Table, create_engine, JSON
 from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker
 from sqlalchemy.sql import func
 import os
@@ -20,6 +20,7 @@ class Persona(Base):
     name = Column(String)
     age = Column(Integer)
     gender = Column(String)
+    profile = Column(JSON, nullable=True)
     
     thoughts = relationship("Thought", back_populates="persona", cascade="all, delete-orphan")
 
@@ -40,6 +41,7 @@ class Thought(Base):
     # Relationships
     tags = relationship("ThoughtTag", back_populates="thought", cascade="all, delete-orphan")
     emotions = relationship("ThoughtEmotion", back_populates="thought", cascade="all, delete-orphan")
+    topics = relationship("ThoughtTopic", back_populates="thought", cascade="all, delete-orphan")
     
     # Self-referential relationship for links
     links_from = relationship(
@@ -97,6 +99,23 @@ class ThoughtLink(Base):
     
     source_thought = relationship("Thought", foreign_keys=[source_id], back_populates="links_from")
     target_thought = relationship("Thought", foreign_keys=[target_id], back_populates="links_to")
+
+class Topic(Base):
+    __tablename__ = "topic"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True)
+    
+    thoughts = relationship("ThoughtTopic", back_populates="topic")
+
+class ThoughtTopic(Base):
+    __tablename__ = "thought_topic"
+    id = Column(Integer, primary_key=True, index=True)
+    thought_id = Column(Integer, ForeignKey("thought.id"))
+    topic_id = Column(Integer, ForeignKey("topic.id"))
+    is_generated = Column(Boolean, default=False)
+    
+    thought = relationship("Thought", back_populates="topics")
+    topic = relationship("Topic", back_populates="thoughts")
 
 def init_db():
     Base.metadata.create_all(bind=engine)

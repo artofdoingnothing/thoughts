@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { Box, Pagination, Stack, Typography, LinearProgress } from '@mui/material';
-import FilterBar from '../components/FilterBar';
 import ThoughtTable from '../components/ThoughtTable';
 import type { Thought, PaginatedResponse } from '../types';
 
@@ -15,11 +14,9 @@ function Thoughts({ refreshKey }: HomeProps) {
     const [thoughts, setThoughts] = useState<Thought[]>([]);
     const [loading, setLoading] = useState(false);
 
-    // Pagination and Search
+    // Pagination
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
-    const [searchTag, setSearchTag] = useState('');
-    const [searchEmotion, setSearchEmotion] = useState('');
     const limit = 10;
 
     // Expanded Rows State
@@ -32,8 +29,6 @@ function Thoughts({ refreshKey }: HomeProps) {
                 page: page.toString(),
                 limit: limit.toString(),
             });
-            if (searchTag) params.append('tag', searchTag);
-            if (searchEmotion) params.append('emotion', searchEmotion);
 
             const response = await axios.get<PaginatedResponse>(`${API_BASE_URL}/thoughts/?${params.toString()}`);
             setThoughts(response.data.items);
@@ -43,7 +38,7 @@ function Thoughts({ refreshKey }: HomeProps) {
         } finally {
             setLoading(false);
         }
-    }, [page, searchTag, searchEmotion]);
+    }, [page]);
 
     useEffect(() => {
         fetchThoughts();
@@ -77,13 +72,6 @@ function Thoughts({ refreshKey }: HomeProps) {
             </Typography>
 
             {loading && <LinearProgress sx={{ mb: 2 }} />}
-
-            <FilterBar
-                searchTag={searchTag}
-                setSearchTag={setSearchTag}
-                searchEmotion={searchEmotion}
-                setSearchEmotion={setSearchEmotion}
-            />
 
             <ThoughtTable
                 thoughts={thoughts}

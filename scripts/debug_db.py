@@ -1,46 +1,40 @@
 import os
+import sys
 
-# Force local connection for debugging script ONLY if not already set
+# Ensure the root of the project is in the python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Force local connection for debugging script if not already set
 if not os.getenv("DATABASE_URL"):
     os.environ["DATABASE_URL"] = "postgresql://user:password@localhost:5432/thoughts"
 
-from libs.db_service.models import Thought, ThoughtTag, ThoughtEmotion, Tag, Emotion, db
+from libs.db_service.models import SessionLocal, Tag, Thought, ThoughtTag
 
-def query_thoughts():
-    if db.is_closed():
-        db.connect()
-    
-    thoughts = Thought.select()
-    count = thoughts.count()
-    print(f"Total thoughts found: {count}")
-    print("-" * 30)
-
-    for t in thoughts:
-        print(f"ID: {t.id}")
-        print(f"Title: {t.title}")
-        print(f"Content: {t.content}")
-        print(f"Status: {t.status}")
-        print(f"Is Generated: {t.is_generated}")
-        
-        print("Tags:")
-        tags = [f"{tt.tag.name} (auto={tt.is_generated})" for tt in t.tags]
-        if tags:
-            for tag in tags:
-                print(f"  - {tag}")
-        else:
-            print("  (No tags)")
-            
-        print("Emotions:")
-        emotions = [f"{te.emotion.name} (auto={te.is_generated})" for te in t.emotions]
-        if emotions:
-            for emotion in emotions:
-                print(f"  - {emotion}")
-        else:
-            print("  (No emotions)")
-        print("-" * 30)
-
-if __name__ == "__main__":
+def debug_data():
+    session = SessionLocal()
     try:
-        query_thoughts()
+        print("Querying Thoughts...")
+        thoughts = session.query(Thought).all()
+        print(f"Total thoughts found: {len(thoughts)}")
+        for t in thoughts:
+            print(f"ID: {t.id} | Title: {t.title if hasattr(t, 'title') else 'No Title'} | Generated: {t.is_generated}")
+            tags = session.query(ThoughtTag).filter(ThoughtTag.thought_id == t.id).all()
+            if tags:
+                print(f"  Tags: {[tag.tag_id for tag in tags]}") # Just IDs for now to avoid lazy load issues if Tag not joined
+            else:
+                print("  (No tags)")
+        
+        print("-" * 30)
+        print("Querying Tags (Global)...")
+        tags = session.query(Tag).all()
+        print(f"Total global tags found: {len(tags)}")
+        for tag in tags:
+            print(f"ID: {tag.id}, Name: {tag.name}")
+            
     except Exception as e:
         print(f"Error querying database: {e}")
+    finally:
+        session.close()
+
+if __name__ == "__main__":
+    debug_data()

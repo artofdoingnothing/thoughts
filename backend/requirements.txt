@@ -7,6 +7,7 @@ redis
 pydantic
 pydantic-settings
 psycopg2-binary
+google-genai
 
 # Development and Testing
 pytest

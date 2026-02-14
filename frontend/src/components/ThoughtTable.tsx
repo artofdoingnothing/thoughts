@@ -110,6 +110,13 @@ const Row: React.FC<{
                 </TableCell>
                 <TableCell>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {thought.topics && thought.topics.map(t => (
+                            <Chip key={t.name} label={t.name} size="small" variant="outlined" color="primary" sx={{ fontSize: '0.7rem' }} />
+                        ))}
+                    </Box>
+                </TableCell>
+                <TableCell>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                         {thought.tags.map(t => (
                             <Chip key={t.name} label={t.name} size="small" sx={{ bgcolor: 'text.primary', color: 'background.paper', fontSize: '0.7rem' }} />
                         ))}
@@ -126,7 +133,7 @@ const Row: React.FC<{
                 </TableCell>
             </TableRow>
             <TableRow>
-                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={9}>
+                <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={11}>
                     <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                         <Box sx={{ margin: 2, p: 2, bgcolor: 'background.paper', borderRadius: 2, border: 1, borderColor: 'divider' }}>
                             <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'block', mb: 1 }}>
@@ -170,6 +177,7 @@ const ThoughtTable: React.FC<ThoughtTableProps> = ({ thoughts, expandedThoughtId
                         <TableCell sx={{ fontWeight: 'bold' }}>TYPE</TableCell>
                         <TableCell sx={{ fontWeight: 'bold' }}>ACTION</TableCell>
                         <TableCell sx={{ fontWeight: 'bold' }}>EMOTIONS</TableCell>
+                        <TableCell sx={{ fontWeight: 'bold' }}>TOPICS</TableCell>
                         <TableCell sx={{ fontWeight: 'bold' }}>TAGS</TableCell>
                         <TableCell align="right" sx={{ fontWeight: 'bold' }}>ACTIONS</TableCell>
                     </TableRow>
@@ -186,7 +194,7 @@ const ThoughtTable: React.FC<ThoughtTableProps> = ({ thoughts, expandedThoughtId
                     ))}
                     {thoughts.length === 0 && (
                         <TableRow>
-                            <TableCell colSpan={9} align="center" sx={{ py: 8 }}>
+                            <TableCell colSpan={11} align="center" sx={{ py: 8 }}>
                                 <Typography variant="body1" color="text.secondary" fontStyle="italic">
                                     No thoughts found. Start by creating one.
                                 </Typography>

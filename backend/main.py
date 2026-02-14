@@ -55,6 +55,12 @@ class ThoughtUpdate(BaseModel):
 class ThoughtLinkCreate(BaseModel):
     target_id: int
 
+class DerivePersonaRequest(BaseModel):
+    source_persona_id: int
+    name_adjective: str
+    percentage: int
+
+
 @app.on_event("startup")
 def startup():
     pass 
@@ -110,6 +116,18 @@ def delete_persona(persona_id: int):
     if not success:
         raise HTTPException(status_code=404, detail="Persona not found")
     return {"message": "Persona deleted successfully"}
+
+@app.post("/personas/derive", response_model=PersonaDomain)
+def derive_persona(request: DerivePersonaRequest):
+    new_persona = ThoughtService.derive_persona(
+        source_persona_id=request.source_persona_id,
+        name_adjective=request.name_adjective,
+        percentage=request.percentage
+    )
+    if not new_persona:
+        raise HTTPException(status_code=400, detail="Could not derive persona. Ensure source persona has thoughts.")
+    return new_persona
+
 
 @app.post("/generate-thoughts/")
 def generate_thoughts(request: GenerateThoughtsRequest):
