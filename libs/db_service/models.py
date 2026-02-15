@@ -14,6 +14,13 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 class Base(DeclarativeBase):
     pass
 
+conversation_persona = Table(
+    "conversation_persona",
+    Base.metadata,
+    Column("conversation_id", Integer, ForeignKey("conversation.id"), primary_key=True),
+    Column("persona_id", Integer, ForeignKey("persona.id"), primary_key=True)
+)
+
 class Persona(Base):
     __tablename__ = "persona"
     id = Column(Integer, primary_key=True, index=True)
@@ -23,6 +30,7 @@ class Persona(Base):
     profile = Column(JSON, nullable=True)
     
     thoughts = relationship("Thought", back_populates="persona", cascade="all, delete-orphan")
+    conversations = relationship("Conversation", secondary=conversation_persona, back_populates="personas")
 
 class Thought(Base):
     __tablename__ = "thought"
@@ -116,6 +124,29 @@ class ThoughtTopic(Base):
     
     thought = relationship("Thought", back_populates="topics")
     topic = relationship("Topic", back_populates="thoughts")
+
+class Conversation(Base):
+    __tablename__ = "conversation"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String)
+    context = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    messages = relationship("Message", back_populates="conversation", cascade="all, delete-orphan")
+    personas = relationship("Persona", secondary=conversation_persona, back_populates="conversations")
+
+class Message(Base):
+    __tablename__ = "message"
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(Text)
+    is_generated = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    conversation_id = Column(Integer, ForeignKey("conversation.id"))
+    persona_id = Column(Integer, ForeignKey("persona.id"))
+    
+    conversation = relationship("Conversation", back_populates="messages")
+    persona = relationship("Persona")
 
 def init_db():
     Base.metadata.create_all(bind=engine)

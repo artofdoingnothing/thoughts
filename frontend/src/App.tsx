@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
-import HomePage from './pages/HomePage';
+import HomePage from './pages/Home';
 import Thoughts from './pages/Thoughts';
 import Personas from './pages/Personas';
-import BlogGenerator from './pages/BlogGenerator';
+import ThoughtGenerator from './pages/ThoughtGenerator';
 import EssayGenerator from './pages/EssayGenerator';
-import CreateThoughtModal from './components/CreateThoughtModal';
+import ConversationGenerator from './pages/ConversationGenerator';
+import CreateThoughtModal from './pages/Thoughts/components/CreateThoughtModal';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -26,8 +27,9 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/thoughts" element={<Thoughts refreshKey={refreshKey} />} />
           <Route path="/personas" element={<Personas />} />
-          <Route path="/generate" element={<BlogGenerator />} />
+          <Route path="/generate" element={<ThoughtGenerator />} />
           <Route path="/essay" element={<EssayGenerator />} />
+          <Route path="/conversation-generator" element={<ConversationGenerator />} />
         </Routes>
       </Layout>
 

@@ -200,3 +200,44 @@ def generate_essay(persona_id, starting_text):
     print(f"Final essay length: {len(final_essay)}")
     return final_essay
 
+def generate_conversation_message(conversation_id, persona_id):
+    print(f"Generating conversation message for conversation {conversation_id}, persona {persona_id}...")
+    conversation = ThoughtService.get_conversation(conversation_id)
+    persona = ThoughtService.get_persona(persona_id)
+    
+    if not conversation or not persona:
+        print("Conversation or Persona not found.")
+        return
+
+    # Get recent messages (last 5)
+    # The conversation object from get_conversation has messages, likely sorted by some order or just all.
+    # Service returns joinedload results. The order in DB is usually by insertion, but let's sort to be safe if not ordered.
+    # The models don't enforce order in relationship by default unless adding order_by.
+    # We should sort by created_at.
+    sorted_messages = sorted(conversation.messages, key=lambda m: m.created_at)
+    recent = sorted_messages[-5:]
+    
+    recent_messages_data = [
+        {"persona": m.persona.name if m.persona else "Unknown", "content": m.content}
+        for m in recent
+    ]
+
+    response_content = processor.generate_conversation_message(
+        persona_name=persona.name,
+        persona_age=persona.age,
+        persona_gender=persona.gender,
+        persona_profile=persona.profile,
+        conversation_context=conversation.context or conversation.title,
+        recent_messages=recent_messages_data
+    )
+    
+    print(f"Generated response: {response_content}")
+    
+    ThoughtService.add_message(
+        conversation_id=conversation_id, 
+        persona_id=persona_id, 
+        content=response_content, 
+        is_generated=True
+    )
+    print("Message added to conversation.")
+

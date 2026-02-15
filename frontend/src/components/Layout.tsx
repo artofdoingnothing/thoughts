@@ -13,6 +13,7 @@ import NotesIcon from '@mui/icons-material/Notes';
 import PersonIcon from '@mui/icons-material/Person';
 import CreateIcon from '@mui/icons-material/Create';
 import ArticleIcon from '@mui/icons-material/Article';
+import ForumIcon from '@mui/icons-material/Forum';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 
 interface LayoutProps {
@@ -29,13 +30,14 @@ const Layout: React.FC<LayoutProps> = ({ children, onNewThought }) => {
         { text: 'Home', icon: <HomeIcon />, path: '/' },
         { text: 'Thoughts', icon: <NotesIcon />, path: '/thoughts' },
         { text: 'Personas', icon: <PersonIcon />, path: '/personas' },
-        { text: 'Generate', icon: <CreateIcon />, path: '/generate' },
+        { text: 'Thought Generator', icon: <CreateIcon />, path: '/generate' },
         { text: 'Essay', icon: <ArticleIcon />, path: '/essay' },
+        { text: 'Conversations', icon: <ForumIcon />, path: '/conversation-generator' },
     ];
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: 'background.default' }}>
-            <AppBar position="sticky" color="inherit" elevation={1}>
+            <AppBar position="sticky" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider' }}>
                 <Container maxWidth="xl">
                     <Toolbar disableGutters>
                         <AutoAwesomeIcon sx={{ display: { xs: 'none', md: 'flex' }, mr: 1, color: 'primary.main' }} />

@@ -4,7 +4,7 @@ import random
 import re
 from typing import List, Dict, Any
 from libs.llm_service import LLMFactory
-from .prompts import COGNITIVE_DISTORTION_PROMPT, SENTIMENT_ANALYSIS_PROMPT, THOUGHT_GENERATION_PROMPT, ACTION_ORIENTATION_PROMPT, THOUGHT_TYPE_PROMPT, ESSAY_DRAFT_AND_TAG_PROMPT, ESSAY_MODIFICATION_PROMPT, TOPIC_ANALYSIS_PROMPT, PROFILE_EMOTION_EXTRACTION_PROMPT, ESSAY_COMPLETION_FROM_PROFILE_PROMPT
+from .prompts import COGNITIVE_DISTORTION_PROMPT, SENTIMENT_ANALYSIS_PROMPT, THOUGHT_GENERATION_PROMPT, ACTION_ORIENTATION_PROMPT, THOUGHT_TYPE_PROMPT, ESSAY_DRAFT_AND_TAG_PROMPT, ESSAY_MODIFICATION_PROMPT, TOPIC_ANALYSIS_PROMPT, PROFILE_EMOTION_EXTRACTION_PROMPT, ESSAY_COMPLETION_FROM_PROFILE_PROMPT, CONVERSATION_MESSAGE_GENERATION_PROMPT
 
 class ProcessorService:
     def __init__(self):
@@ -144,5 +144,28 @@ class ProcessorService:
             starting_text=starting_text,
             persona_details=persona_details,
             emotions=", ".join(emotions) if emotions else "None"
+        )
+        return self.llm.generate_content(prompt)
+
+    def generate_conversation_message(
+        self,
+        persona_name: str,
+        persona_age: int,
+        persona_gender: str,
+        persona_profile: Dict[str, Any],
+        conversation_context: str,
+        recent_messages: List[Dict[str, str]]
+    ) -> str:
+        formatted_messages = ""
+        for msg in recent_messages:
+            formatted_messages += f"{msg['persona']}: {msg['content']}\n"
+        
+        prompt = CONVERSATION_MESSAGE_GENERATION_PROMPT.format(
+            persona_name=persona_name,
+            persona_age=persona_age,
+            persona_gender=persona_gender,
+            persona_profile=json.dumps(persona_profile, indent=2) if persona_profile else "None",
+            conversation_context=conversation_context,
+            recent_messages=formatted_messages
         )
         return self.llm.generate_content(prompt)

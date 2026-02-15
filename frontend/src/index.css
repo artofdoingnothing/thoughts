@@ -1,4 +1,78 @@
 /* Reset/Base styles for MUI integration */
+:root {
+  /* Text Colors */
+  --text-primary: #1a1a1a;
+  --text-secondary: #4a4a4a;
+  --text-muted: #6b7280;
+  --text-inverse: #ffffff;
+
+  /* Blue Palette */
+  --deep-blue: #1e3a8a;
+  --medium-blue: #2563eb;
+  --light-blue: #dbeafe;
+  --blue-hover: #1d4ed8;
+  --blue-text-on-light: #1e40af;
+
+  /* Red Palette */
+  --deep-red: #991b1b;
+  --medium-red: #dc2626;
+  --light-red: #fee2e2;
+  --red-hover: #b91c1c;
+  --red-text-on-light: #b91c1c;
+
+  /* Neutrals */
+  --background: #ffffff;
+  --surface: #f9fafb;
+  --border: #e5e7eb;
+  --grey-dark: #374151;
+  --grey-medium: #9ca3af;
+  --grey-light: #f3f4f6;
+
+  /* Button Specific Colors */
+  --btn-blue-bg: #2563eb;
+  --btn-blue-text: #ffffff;
+  --btn-blue-hover-bg: #1d4ed8;
+  --btn-blue-outline-border: #2563eb;
+  --btn-blue-outline-text: #1e40af;
+  --btn-blue-outline-hover-bg: #dbeafe;
+
+  --btn-red-bg: #dc2626;
+  --btn-red-text: #ffffff;
+  --btn-red-hover-bg: #b91c1c;
+  --btn-red-outline-border: #dc2626;
+  --btn-red-outline-text: #b91c1c;
+  --btn-red-outline-hover-bg: #fee2e2;
+
+  --btn-grey-bg: #6b7280;
+  --btn-grey-text: #ffffff;
+  --btn-grey-hover-bg: #4b5563;
+  --btn-grey-outline-border: #9ca3af;
+  --btn-grey-outline-text: #4a4a4a;
+  --btn-grey-outline-hover-bg: #f3f4f6;
+
+  /* Legacy names (mapped to new palette) */
+  --pale-oak: #f9fafb;
+  --ash-grey: #e5e7eb;
+  --muted-teal: #dc2626;
+  --slate-grey: #991b1b;
+  --dusty-grape: #1e3a8a;
+
+  /* CSS HSL */
+  --text-primary-hsl: hsla(0, 0%, 10%, 1);
+  --text-secondary-hsl: hsla(0, 0%, 29%, 1);
+  --text-muted-hsl: hsla(220, 9%, 46%, 1);
+  --text-inverse-hsl: hsla(0, 0%, 100%, 1);
+  --deep-blue-hsl: hsla(221, 68%, 33%, 1);
+  --medium-blue-hsl: hsla(221, 83%, 53%, 1);
+  --light-blue-hsl: hsla(214, 95%, 93%, 1);
+  --deep-red-hsl: hsla(0, 70%, 35%, 1);
+  --medium-red-hsl: hsla(0, 73%, 50%, 1);
+  --light-red-hsl: hsla(0, 93%, 94%, 1);
+  --background-hsl: hsla(0, 0%, 100%, 1);
+  --surface-hsl: hsla(220, 14%, 98%, 1);
+  --border-hsl: hsla(220, 13%, 91%, 1);
+}
+
 body {
   margin: 0;
   display: flex;

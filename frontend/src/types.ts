@@ -23,6 +23,9 @@ export interface Persona {
     profile?: {
         topics: { name: string; emotions: string[] }[];
         thought_patterns: string;
+        tags?: string[];
+        thought_type?: string;
+        action_orientation?: string;
     };
 }
 
@@ -47,4 +50,23 @@ export interface PaginatedResponse {
     page: number;
     limit: number;
     items: Thought[];
+}
+
+export interface Message {
+    id: number;
+    content: string;
+    is_generated: boolean;
+    created_at: string;
+    persona_id: number;
+    conversation_id: number;
+    persona?: Persona;
+}
+
+export interface Conversation {
+    id: number;
+    title: string;
+    context: string;
+    created_at: string;
+    messages: Message[];
+    personas: Persona[];
 }

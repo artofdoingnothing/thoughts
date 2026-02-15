@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Box, Typography, TextField, Button, MenuItem, Select, FormControl, InputLabel, Alert, Stack, IconButton } from '@mui/material';
+import { Box, TextField, Button, MenuItem, Select, FormControl, InputLabel, Alert, Stack, IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import type { Persona } from '../types';
+import type { Persona } from '../../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 export default function BlogGenerator() {
     const [personas, setPersonas] = useState<Persona[]>([]);
-    const [urls, setUrls] = useState<string[]>(['']);
+    const [urls, setUrls] = useState<string[]>(['', '', '', '', '']);
     const [selectedPersona, setSelectedPersona] = useState<string>('');
     const [message, setMessage] = useState('');
 
@@ -52,8 +52,6 @@ export default function BlogGenerator() {
 
     return (
         <Box maxWidth="sm">
-            <Typography variant="h4" sx={{ mb: 4, color: 'primary.main', fontWeight: 'bold' }}>BLOG GENERATOR</Typography>
-
             {message && <Alert severity="info" sx={{ mb: 2 }}>{message}</Alert>}
 
             <Stack spacing={3}>

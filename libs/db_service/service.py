@@ -3,7 +3,7 @@ from datetime import datetime
 from sqlalchemy import create_engine, select, func, update, delete
 from sqlalchemy.orm import sessionmaker, Session, joinedload
 from pydantic import BaseModel as PydanticBaseModel
-from .models import Thought, Tag, ThoughtTag, Emotion, ThoughtEmotion, ThoughtLink, Persona, Topic, ThoughtTopic, SessionLocal
+from .models import Thought, Tag, ThoughtTag, Emotion, ThoughtEmotion, ThoughtLink, Persona, Topic, ThoughtTopic, SessionLocal, Conversation, Message
 import random
 import json
 from libs.llm_service.gemini import GeminiLLM
@@ -49,7 +49,41 @@ class ThoughtDomain(PydanticBaseModel):
     class Config:
         from_attributes = True
 
+class MessageDomain(PydanticBaseModel):
+    id: int
+    content: str
+    is_generated: bool
+    created_at: datetime
+    persona_id: int
+    conversation_id: int
+    persona: Optional[PersonaDomain] = None
+
+    class Config:
+        from_attributes = True
+
+class ConversationDomain(PydanticBaseModel):
+    id: int
+    title: str
+    context: Optional[str] = None
+    created_at: datetime
+    messages: List[MessageDomain] = []
+    personas: List[PersonaDomain] = []
+
+    class Config:
+        from_attributes = True
+
 class ThoughtService:
+    @staticmethod
+    def _map_conversation_to_domain(conversation: Conversation) -> ConversationDomain:
+        return ConversationDomain(
+            id=conversation.id,
+            title=conversation.title,
+            context=conversation.context,
+            created_at=conversation.created_at,
+            messages=[MessageDomain.model_validate(m) for m in conversation.messages],
+            personas=[PersonaDomain.model_validate(p) for p in conversation.personas]
+        )
+
     @staticmethod
     def _map_to_domain(thought: Thought) -> ThoughtDomain:
         return ThoughtDomain(
@@ -148,7 +182,7 @@ class ThoughtService:
             return cls._map_to_domain(thought)
 
     @classmethod
-    def list_thoughts(cls, tag: Optional[str] = None, emotion: Optional[str] = None, page: int = 1, limit: int = 10):
+    def list_thoughts(cls, tag: Optional[str] = None, emotion: Optional[str] = None, persona_id: Optional[int] = None, page: int = 1, limit: int = 10):
         with SessionLocal() as session:
             query = select(Thought).options(
                 joinedload(Thought.emotions).joinedload(ThoughtEmotion.emotion),
@@ -162,6 +196,8 @@ class ThoughtService:
                 query = query.join(Thought.tags).join(ThoughtTag.tag).where(Tag.name == tag.lower())
             if emotion:
                 query = query.join(Thought.emotions).join(ThoughtEmotion.emotion).where(Emotion.name == emotion.lower())
+            if persona_id:
+                query = query.where(Thought.persona_id == persona_id)
             
             # Count
             # Optimized count: select(func.count()).select_from(query.subquery())
@@ -187,6 +223,8 @@ class ThoughtService:
                 count_query = count_query.join(Thought.tags).join(ThoughtTag.tag).where(Tag.name == tag.lower())
             if emotion:
                 count_query = count_query.join(Thought.emotions).join(ThoughtEmotion.emotion).where(Emotion.name == emotion.lower())
+            if persona_id:
+                count_query = count_query.where(Thought.persona_id == persona_id)
             
             total_count = session.scalar(count_query)
 
@@ -525,7 +563,10 @@ class ThoughtService:
                             "emotions": ["emotion1", "emotion2"]
                         }}
                     ],
-                    "thought_patterns": "Brief summary of thought patterns"
+                    "thought_patterns": "Brief summary of thought patterns",
+                    "tags": ["tag1", "tag2", "tag3"],
+                    "thought_type": "Automatic/Deliberate/etc.",
+                    "action_orientation": "Action-oriented/Ruminative/etc."
                 }}
                 """
                 
@@ -555,6 +596,85 @@ class ThoughtService:
 
         except Exception as e:
             print(f"Error deriving persona: {e}")
+            return None
+
+    @classmethod
+    def create_conversation(cls, title: str, context: str, persona_ids: List[int]) -> Optional[ConversationDomain]:
+        try:
+            with SessionLocal() as session:
+                personas = session.scalars(select(Persona).where(Persona.id.in_(persona_ids))).all()
+                if len(personas) != len(persona_ids):
+                    return None # Some personas not found
+
+                conversation = Conversation(title=title, context=context)
+                conversation.personas = personas
+                session.add(conversation)
+                session.commit()
+                
+                # Fetch with relationships
+                stmt = select(Conversation).where(Conversation.id == conversation.id).options(
+                    joinedload(Conversation.personas),
+                    joinedload(Conversation.messages)
+                )
+                conversation = session.scalar(stmt)
+                return cls._map_conversation_to_domain(conversation)
+        except Exception as e:
+            print(f"Error creating conversation: {e}")
+            return None
+
+    @classmethod
+    def list_conversations(cls) -> List[ConversationDomain]:
+        try:
+            with SessionLocal() as session:
+                conversations = session.scalars(
+                    select(Conversation).order_by(Conversation.created_at.desc()).options(
+                        joinedload(Conversation.personas),
+                         joinedload(Conversation.messages).joinedload(Message.persona)
+                    )
+                ).unique().all()
+                return [cls._map_conversation_to_domain(c) for c in conversations]
+        except Exception as e:
+            print(f"Error listing conversations: {e}")
+            return []
+
+    @classmethod
+    def get_conversation(cls, conversation_id: int) -> Optional[ConversationDomain]:
+        try:
+            with SessionLocal() as session:
+                stmt = select(Conversation).where(Conversation.id == conversation_id).options(
+                    joinedload(Conversation.personas),
+                    joinedload(Conversation.messages).joinedload(Message.persona)
+                )
+                conversation = session.scalar(stmt)
+                return cls._map_conversation_to_domain(conversation) if conversation else None
+        except Exception as e:
+            print(f"Error getting conversation: {e}")
+            return None
+
+    @classmethod
+    def add_message(cls, conversation_id: int, persona_id: int, content: str, is_generated: bool = False) -> Optional[MessageDomain]:
+        try:
+            with SessionLocal() as session:
+                conversation = session.get(Conversation, conversation_id)
+                persona = session.get(Persona, persona_id)
+                if not conversation or not persona:
+                    return None
+
+                message = Message(
+                    conversation_id=conversation_id,
+                    persona_id=persona_id,
+                    content=content,
+                    is_generated=is_generated
+                )
+                session.add(message)
+                session.commit()
+                session.refresh(message)
+                # Ensure persona is loaded for return
+                stmt = select(Message).where(Message.id == message.id).options(joinedload(Message.persona))
+                message = session.scalar(stmt)
+                return MessageDomain.model_validate(message)
+        except Exception as e:
+            print(f"Error adding message: {e}")
             return None
 
 def init_database():

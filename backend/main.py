@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
-from libs.db_service import ThoughtService, init_database, get_db, PersonaDomain
+from libs.db_service import ThoughtService, init_database, get_db, PersonaDomain, ConversationDomain, MessageDomain
 from redis import Redis
 from rq import Queue
 import os
@@ -59,6 +59,14 @@ class DerivePersonaRequest(BaseModel):
     source_persona_id: int
     name_adjective: str
     percentage: int
+
+class ConversationCreate(BaseModel):
+    title: str
+    context: str
+    persona_ids: List[int]
+
+class GenerateMessageRequest(BaseModel):
+    persona_id: int
 
 
 @app.on_event("startup")
@@ -162,10 +170,11 @@ def get_essay_status(job_id: str):
 def list_thoughts(
     tag: Optional[str] = None, 
     emotion: Optional[str] = None, 
+    persona_id: Optional[int] = None,
     page: int = 1, 
     limit: int = 10
 ):
-    result = ThoughtService.list_thoughts(tag=tag, emotion=emotion, page=page, limit=limit)
+    result = ThoughtService.list_thoughts(tag=tag, emotion=emotion, persona_id=persona_id, page=page, limit=limit)
     
     return {
         "total": result["total"],
@@ -209,3 +218,37 @@ def update_thought(thought_id: int, thought_update: dict):
     if not updated_thought:
         raise HTTPException(status_code=404, detail="Thought not found")
     return updated_thought.dict()
+
+@app.post("/conversations/", response_model=ConversationDomain)
+def create_conversation(conversation: ConversationCreate):
+    new_conversation = ThoughtService.create_conversation(
+        title=conversation.title,
+        context=conversation.context,
+        persona_ids=conversation.persona_ids
+    )
+    if not new_conversation:
+         raise HTTPException(status_code=400, detail="Could not create conversation. Check persona IDs.")
+    return new_conversation
+
+@app.get("/conversations/", response_model=List[ConversationDomain])
+def list_conversations():
+    return ThoughtService.list_conversations()
+
+@app.get("/conversations/{conversation_id}", response_model=ConversationDomain)
+def get_conversation(conversation_id: int):
+    conversation = ThoughtService.get_conversation(conversation_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return conversation
+
+@app.post("/conversations/{conversation_id}/generate")
+def generate_message(conversation_id: int, request: GenerateMessageRequest):
+    conversation = ThoughtService.get_conversation(conversation_id)
+    if not conversation:
+         raise HTTPException(status_code=404, detail="Conversation not found")
+    
+    # Enqueue task
+    q_generation = Queue('generation', connection=redis_conn)
+    q_generation.enqueue("workers.tasks.generate_conversation_message", conversation_id, request.persona_id)
+    
+    return {"message": "Message generation passed to worker"}

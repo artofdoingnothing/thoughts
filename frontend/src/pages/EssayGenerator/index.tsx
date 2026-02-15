@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Box, Typography, TextField, Button, MenuItem, Select, FormControl, InputLabel, Alert, Stack, CircularProgress, Paper } from '@mui/material';
-import type { Persona } from '../types';
+import type { Persona } from '../../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 

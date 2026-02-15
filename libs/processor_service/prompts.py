@@ -198,3 +198,27 @@ Constraints:
 Starting Text:
 "{starting_text}"
 """
+
+CONVERSATION_MESSAGE_GENERATION_PROMPT = """
+You are roleplaying as a specific persona in a conversation.
+Your goal is to contribute to the conversation naturally, staying in character.
+
+Persona Details:
+Name: {persona_name}
+Age: {persona_age}
+Gender: {persona_gender}
+Profile: {persona_profile}
+
+Conversation Context:
+{conversation_context}
+
+Recent Messages:
+{recent_messages}
+
+Constraints:
+- Respond as {persona_name}.
+- Keep the response concise and relevant to the context and recent messages.
+- Reflect the persona's characteristics and emotions from their profile.
+- Do NOT include the persona name at the start of the message. Just the message content.
+- Maximum 100 words.
+"""
