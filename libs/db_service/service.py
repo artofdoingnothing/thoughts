@@ -27,6 +27,7 @@ class PersonaDomain(PydanticBaseModel):
     age: int
     gender: str
     profile: Optional[Dict[str, Any]] = None
+    additional_info: Optional[Dict[str, Any]] = None
 
     class Config:
         from_attributes = True
@@ -103,9 +104,9 @@ class ThoughtService:
         )
 
     @classmethod
-    def create_persona(cls, name: str, age: int, gender: str) -> PersonaDomain:
+    def create_persona(cls, name: str, age: int, gender: str, additional_info: Optional[Dict[str, Any]] = None) -> PersonaDomain:
         with SessionLocal() as session:
-            persona = Persona(name=name, age=age, gender=gender)
+            persona = Persona(name=name, age=age, gender=gender, additional_info=additional_info)
             session.add(persona)
             session.commit()
             session.refresh(persona)
@@ -399,6 +400,25 @@ class ThoughtService:
             return False
 
     @classmethod
+    def update_persona(cls, persona_id: int, updates: dict) -> Optional[PersonaDomain]:
+        try:
+            with SessionLocal() as session:
+                valid_updates = {k: v for k, v in updates.items() if k in ['name', 'age', 'gender', 'additional_info']}
+                
+                stmt = update(Persona).where(Persona.id == persona_id).values(**valid_updates)
+                result = session.execute(stmt)
+                session.commit()
+                
+                if result.rowcount == 0:
+                    return None
+                    
+                persona = session.get(Persona, persona_id)
+                return PersonaDomain.model_validate(persona)
+        except Exception as e:
+            print(f"Error updating persona: {e}")
+            return None
+
+    @classmethod
     def update_thought(cls, thought_id: int, updates: dict) -> Optional[ThoughtDomain]:
         try:
             with SessionLocal() as session:
@@ -544,41 +564,13 @@ class ThoughtService:
                 else:
                     thought_texts = [t.content for t in sampled_thoughts]
                 
-                # Construct Prompt
-                llm = GeminiLLM()
-                prompt = f"""
-                Analyze the following thoughts from a persona:
-                {json.dumps(thought_texts)}
-
-                Create a generalized profile for a new persona based on these thoughts.
-                The specific topics should be merged into broader, generalized topics.
-                Map the emotions from the thoughts to these new generalized topics.
-                Limit to at most 5 generalized topics.
-
-                Return ONLY a valid JSON object with the following structure:
-                {{
-                    "topics": [
-                        {{
-                            "name": "Generalized Topic Name",
-                            "emotions": ["emotion1", "emotion2"]
-                        }}
-                    ],
-                    "thought_patterns": "Brief summary of thought patterns",
-                    "tags": ["tag1", "tag2", "tag3"],
-                    "thought_type": "Automatic/Deliberate/etc.",
-                    "action_orientation": "Action-oriented/Ruminative/etc."
-                }}
-                """
-                
-                response_text = llm.generate_content(prompt)
-                
-                # Cleanup potential markdown formatting
-                if "```json" in response_text:
-                    response_text = response_text.split("```json")[1].split("```")[0].strip()
-                elif "```" in response_text:
-                     response_text = response_text.split("```")[1].split("```")[0].strip()
-                
-                profile_data = json.loads(response_text)
+                profile_data = cls._generate_profile_from_thoughts(thought_texts)
+                if not profile_data:
+                     # Fallback or error?
+                     # Let's proceed with empty profile or try again?
+                     # For now, if LLM fails, we might return None or empty dict.
+                     # derive_persona expects a profile.
+                     return None
 
                 new_name = f"{name_adjective} {source_persona.name}"
                 
@@ -586,7 +578,8 @@ class ThoughtService:
                     name=new_name,
                     age=source_persona.age,
                     gender=source_persona.gender,
-                    profile=profile_data
+                    profile=profile_data,
+                    additional_info=source_persona.additional_info
                 )
                 session.add(new_persona)
                 session.commit()
@@ -596,6 +589,78 @@ class ThoughtService:
 
         except Exception as e:
             print(f"Error deriving persona: {e}")
+            return None
+
+    @classmethod
+    def _generate_profile_from_thoughts(cls, thought_texts: List[str]) -> Optional[Dict[str, Any]]:
+        try:
+            llm = GeminiLLM()
+            prompt = f"""
+            Analyze the following thoughts from a persona:
+            {json.dumps(thought_texts)}
+
+            Create a generalized profile for a new persona based on these thoughts.
+            The specific topics should be merged into broader, generalized topics.
+            Map the emotions from the thoughts to these new generalized topics.
+            Limit to at most 5 generalized topics.
+
+            Return ONLY a valid JSON object with the following structure:
+            {{
+                "topics": [
+                    {{
+                        "name": "Generalized Topic Name",
+                        "emotions": ["emotion1", "emotion2"]
+                    }}
+                ],
+                "thought_patterns": "Brief summary of thought patterns",
+                "tags": ["tag1", "tag2", "tag3"],
+                "thought_type": "Automatic/Deliberate/etc.",
+                "action_orientation": "Action-oriented/Ruminative/etc."
+            }}
+            """
+            
+            response_text = llm.generate_content(prompt)
+            
+            # Cleanup potential markdown formatting
+            if "```json" in response_text:
+                response_text = response_text.split("```json")[1].split("```")[0].strip()
+            elif "```" in response_text:
+                    response_text = response_text.split("```")[1].split("```")[0].strip()
+            
+            return json.loads(response_text)
+        except Exception as e:
+            print(f"Error generating profile: {e}")
+            return None
+
+    @classmethod
+    def regenerate_persona(cls, persona_id: int) -> Optional[PersonaDomain]:
+        try:
+            with SessionLocal() as session:
+                persona = session.get(Persona, persona_id)
+                if not persona:
+                    return None
+                
+                # Fetch all thoughts
+                thoughts = session.scalars(select(Thought).where(Thought.persona_id == persona_id)).all()
+                if not thoughts:
+                    # No thoughts to regenerate from?
+                    return None
+                
+                thought_texts = [t.content for t in thoughts]
+                
+                new_profile = cls._generate_profile_from_thoughts(thought_texts)
+                if not new_profile:
+                     return None
+                
+                # Update persona
+                persona.profile = new_profile
+                session.add(persona)
+                session.commit()
+                session.refresh(persona)
+                
+                return PersonaDomain.model_validate(persona)
+        except Exception as e:
+            print(f"Error regenerating persona: {e}")
             return None
 
     @classmethod
@@ -676,6 +741,73 @@ class ThoughtService:
         except Exception as e:
             print(f"Error adding message: {e}")
             return None
+
+    @classmethod
+    def add_persona_to_conversation(cls, conversation_id: int, persona_id: int) -> bool:
+        try:
+            with SessionLocal() as session:
+                conversation = session.get(Conversation, conversation_id)
+                persona = session.get(Persona, persona_id)
+                if not conversation or not persona:
+                    return False
+                
+                # Check if already in conversation
+                if persona in conversation.personas:
+                    return True # Idempotent
+                
+                conversation.personas.append(persona)
+                session.commit()
+                return True
+        except Exception as e:
+            print(f"Error adding persona to conversation: {e}")
+            return False
+
+    @classmethod
+    def end_conversation(cls, conversation_id: int) -> bool:
+        """
+        Ends a conversation by converting all messages into Thoughts for the respective personas.
+        """
+        try:
+            with SessionLocal() as session:
+                conversation = session.get(Conversation, conversation_id)
+                if not conversation:
+                    return False
+                
+                # Iterate through messages
+                # We need to ensure we don't duplicate thoughts if this is called multiple times?
+                # The requirement says "On ending...". Maybe we should look if thought already exists?
+                # But messages might be identical.
+                # Let's assume this is an explicit action.
+                # We could add a flag to conversation "ended" or "archived"? 
+                # The model doesn't have it. I'll just convert.
+                
+                messages = conversation.messages
+                thoughts_created = 0
+                
+                for msg in messages:
+                    if not msg.persona_id:
+                        continue
+                        
+                    # Create thought
+                    thought = Thought(
+                        content=msg.content,
+                        persona_id=msg.persona_id,
+                        is_generated=msg.is_generated,
+                        status="completed", # Auto-complete?
+                        thought_type="Conversation", # maybe a new type?
+                        created_at=msg.created_at # Preserve timestamp?
+                    )
+                    session.add(thought)
+                    thoughts_created += 1
+                
+                session.commit()
+                print(f"Ended conversation {conversation_id}. Created {thoughts_created} thoughts.")
+                # Optionally delete conversation? Requirement says "Add an end conversation button... messages will be added as thoughts". 
+                # Doesn't explicitly say delete. I'll keep it for now.
+                return True
+        except Exception as e:
+            print(f"Error ending conversation: {e}")
+            return False
 
 def init_database():
     # from .models import init_db

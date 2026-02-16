@@ -154,7 +154,8 @@ class ProcessorService:
         persona_gender: str,
         persona_profile: Dict[str, Any],
         conversation_context: str,
-        recent_messages: List[Dict[str, str]]
+        recent_messages: List[Dict[str, str]],
+        other_personas_info: str
     ) -> str:
         formatted_messages = ""
         for msg in recent_messages:
@@ -166,6 +167,7 @@ class ProcessorService:
             persona_gender=persona_gender,
             persona_profile=json.dumps(persona_profile, indent=2) if persona_profile else "None",
             conversation_context=conversation_context,
-            recent_messages=formatted_messages
+            recent_messages=formatted_messages,
+            other_personas_info=other_personas_info
         )
         return self.llm.generate_content(prompt)

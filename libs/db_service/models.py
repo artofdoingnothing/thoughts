@@ -28,6 +28,7 @@ class Persona(Base):
     age = Column(Integer)
     gender = Column(String)
     profile = Column(JSON, nullable=True)
+    additional_info = Column(JSON, nullable=True)
     
     thoughts = relationship("Thought", back_populates="persona", cascade="all, delete-orphan")
     conversations = relationship("Conversation", secondary=conversation_persona, back_populates="personas")

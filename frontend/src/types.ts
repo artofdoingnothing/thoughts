@@ -27,6 +27,7 @@ export interface Persona {
         thought_type?: string;
         action_orientation?: string;
     };
+    additional_info?: Record<string, any>;
 }
 
 export interface Thought {

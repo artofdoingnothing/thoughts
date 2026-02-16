@@ -222,13 +222,23 @@ def generate_conversation_message(conversation_id, persona_id):
         for m in recent
     ]
 
+    # Gather info about all personas in conversation
+    other_personas_info = ""
+    for p in conversation.personas:
+        if p.id != persona_id:
+             other_personas_info += f"- Name: {p.name}, Age: {p.age}, Gender: {p.gender}\n"
+    
+    if not other_personas_info:
+        other_personas_info = "None"
+
     response_content = processor.generate_conversation_message(
         persona_name=persona.name,
         persona_age=persona.age,
         persona_gender=persona.gender,
         persona_profile=persona.profile,
         conversation_context=conversation.context or conversation.title,
-        recent_messages=recent_messages_data
+        recent_messages=recent_messages_data,
+        other_personas_info=other_personas_info
     )
     
     print(f"Generated response: {response_content}")

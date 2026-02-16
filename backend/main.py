@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from libs.db_service import ThoughtService, init_database, get_db, PersonaDomain, ConversationDomain, MessageDomain
 from redis import Redis
 from rq import Queue
@@ -33,9 +33,16 @@ class ThoughtCreate(BaseModel):
     thought_type: Optional[str] = None
 
 class PersonaCreate(BaseModel):
-    name: str
+    name: str # Optional if generated? No, user can generate then submit.
     age: int
     gender: str
+    additional_info: Optional[Dict[str, Any]] = None
+
+class PersonaUpdate(BaseModel):
+    name: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    additional_info: Optional[Dict[str, Any]] = None
 
 class GenerateThoughtsRequest(BaseModel):
     urls: List[str]
@@ -66,6 +73,9 @@ class ConversationCreate(BaseModel):
     persona_ids: List[int]
 
 class GenerateMessageRequest(BaseModel):
+    persona_id: int
+
+class AddPersonaToConversationRequest(BaseModel):
     persona_id: int
 
 
@@ -115,8 +125,35 @@ def create_persona(persona: PersonaCreate):
     return ThoughtService.create_persona(
         name=persona.name,
         age=persona.age,
-        gender=persona.gender
+        gender=persona.gender,
+        additional_info=persona.additional_info
     )
+
+@app.put("/personas/{persona_id}", response_model=PersonaDomain)
+def update_persona(persona_id: int, persona_update: PersonaUpdate):
+    updates = persona_update.dict(exclude_unset=True)
+    updated_persona = ThoughtService.update_persona(persona_id, updates)
+    if not updated_persona:
+        raise HTTPException(status_code=404, detail="Persona not found")
+    return updated_persona
+
+@app.post("/personas/generate-name")
+def generate_persona_name():
+    # Simple generation using LLM or just random words. 
+    # Since we have GeminiLLM locally in service, we can use it, but exposing it here 
+    # requires importing it or adding a service method.
+    # Let's add a service method for it or just use a simple list for now if LLM is overkill?
+    # User said "auto generate the name... 2 or 3 words long".
+    # Using LLM is safer for "good" names.
+    from libs.llm_service.gemini import GeminiLLM
+    try:
+        llm = GeminiLLM()
+        prompt = "Generate a single creative persona name consisting of 2 or 3 words. Return ONLY the name."
+        name = llm.generate_content(prompt).strip().replace('"', '').replace('.', '')
+        return {"name": name}
+    except Exception as e:
+        # Fallback
+        return {"name": "Random Persona"}
 
 @app.delete("/personas/{persona_id}")
 def delete_persona(persona_id: int):
@@ -124,6 +161,13 @@ def delete_persona(persona_id: int):
     if not success:
         raise HTTPException(status_code=404, detail="Persona not found")
     return {"message": "Persona deleted successfully"}
+
+@app.post("/personas/{persona_id}/regenerate", response_model=PersonaDomain)
+def regenerate_persona(persona_id: int):
+    updated_persona = ThoughtService.regenerate_persona(persona_id)
+    if not updated_persona:
+         raise HTTPException(status_code=400, detail="Could not regenerate persona. Ensure persona exists and has thoughts.")
+    return updated_persona
 
 @app.post("/personas/derive", response_model=PersonaDomain)
 def derive_persona(request: DerivePersonaRequest):
@@ -252,3 +296,17 @@ def generate_message(conversation_id: int, request: GenerateMessageRequest):
     q_generation.enqueue("workers.tasks.generate_conversation_message", conversation_id, request.persona_id)
     
     return {"message": "Message generation passed to worker"}
+
+@app.post("/conversations/{conversation_id}/personas")
+def add_persona_to_conversation(conversation_id: int, request: AddPersonaToConversationRequest):
+    success = ThoughtService.add_persona_to_conversation(conversation_id, request.persona_id)
+    if not success:
+         raise HTTPException(status_code=400, detail="Could not add persona to conversation. Check IDs.")
+    return {"message": "Persona added successfully"}
+
+@app.post("/conversations/{conversation_id}/end")
+def end_conversation(conversation_id: int):
+    success = ThoughtService.end_conversation(conversation_id)
+    if not success:
+         raise HTTPException(status_code=400, detail="Could not end conversation.")
+    return {"message": "Conversation ended and thoughts created"}
