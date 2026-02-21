@@ -1,21 +1,16 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Box, TextField, Button, MenuItem, Select, FormControl, InputLabel, Alert, Stack, IconButton } from '@mui/material';
+import { useState } from 'react';
+import { Box, TextField, Button, MenuItem, Select, FormControl, InputLabel, Alert, Stack, IconButton, CircularProgress } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import type { Persona } from '../../types';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { usePersonas } from '../../hooks/usePersonas';
+import { useGenerateThoughts } from '../../hooks/useGenerateThoughts';
 
 export default function BlogGenerator() {
-    const [personas, setPersonas] = useState<Persona[]>([]);
+    const { data: personas = [] } = usePersonas();
+    const { mutate, isPending, isSuccess, isError, reset } = useGenerateThoughts();
+
     const [urls, setUrls] = useState<string[]>(['', '', '', '', '']);
     const [selectedPersona, setSelectedPersona] = useState<string>('');
-    const [message, setMessage] = useState('');
-
-    useEffect(() => {
-        axios.get<Persona[]>(`${API_BASE_URL}/personas/`).then(res => setPersonas(res.data)).catch(console.error);
-    }, []);
 
     const handleUrlChange = (index: number, value: string) => {
         const newUrls = [...urls];
@@ -32,27 +27,25 @@ export default function BlogGenerator() {
         setUrls(newUrls.length ? newUrls : ['']);
     };
 
-    const handleSubmit = async () => {
-        try {
-            const validUrls = urls.filter(u => u.trim() !== '');
-            if (validUrls.length === 0) return;
+    const handleSubmit = () => {
+        const validUrls = urls.filter(u => u.trim() !== '');
+        if (validUrls.length === 0) return;
 
-            await axios.post(`${API_BASE_URL}/generate-thoughts/`, {
-                urls: validUrls,
-                persona_id: parseInt(selectedPersona)
-            });
-            setMessage('Generation started! Check the Thoughts page shortly.');
-            setUrls(['']);
-            setSelectedPersona('');
-        } catch (err) {
-            console.error(err);
-            setMessage('Error starting generation.');
-        }
+        mutate({
+            urls: validUrls,
+            persona_id: parseInt(selectedPersona)
+        }, {
+            onSuccess: () => {
+                setUrls(['']);
+                setSelectedPersona('');
+            }
+        });
     };
 
     return (
         <Box maxWidth="sm">
-            {message && <Alert severity="info" sx={{ mb: 2 }}>{message}</Alert>}
+            {isSuccess && <Alert severity="success" sx={{ mb: 2 }} onClose={reset}>Generation started! Check the Thoughts page shortly.</Alert>}
+            {isError && <Alert severity="error" sx={{ mb: 2 }} onClose={reset}>Error starting generation.</Alert>}
 
             <Stack spacing={3}>
                 {urls.map((url, index) => (
@@ -82,8 +75,8 @@ export default function BlogGenerator() {
                     </Select>
                 </FormControl>
 
-                <Button variant="contained" size="large" onClick={handleSubmit} disabled={!urls.some(u => u.trim()) || !selectedPersona}>
-                    Generate Thoughts
+                <Button variant="contained" size="large" onClick={handleSubmit} disabled={!urls.some(u => u.trim()) || !selectedPersona || isPending}>
+                    {isPending ? <CircularProgress size={24} /> : 'Generate Thoughts'}
                 </Button>
             </Stack>
         </Box>

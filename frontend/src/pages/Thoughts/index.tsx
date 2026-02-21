@@ -1,61 +1,35 @@
-import { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import { useState } from 'react';
 import { Box, Pagination, Typography, CircularProgress, FormControl, InputLabel, MenuItem, Select } from '@mui/material';
 import ThoughtTable from './components/ThoughtTable';
 import FilterBar from './components/FilterBar';
-import type { Thought, Persona } from '../../types';
+import { usePersonas } from '../../hooks/usePersonas';
+import { useThoughts, useDeleteThought } from '../../hooks/useThoughts';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
-export default function Thoughts({ refreshKey }: { refreshKey: number }) {
-    const [thoughts, setThoughts] = useState<Thought[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    // Pagination
-    const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-
-    // Filters
+export default function Thoughts() {
     const [selectedTag, setSelectedTag] = useState<string>('');
     const [selectedEmotion, setSelectedEmotion] = useState<string>('');
-    const [personas, setPersonas] = useState<Persona[]>([]);
     const [selectedPersona, setSelectedPersona] = useState<string>('');
+    const [page, setPage] = useState(1);
+
+    const { data: personas = [] } = usePersonas();
+    const { data, isLoading: loading } = useThoughts({ 
+        page, 
+        tag: selectedTag, 
+        emotion: selectedEmotion, 
+        persona_id: selectedPersona 
+    });
+
+    const deleteMutation = useDeleteThought();
+
+    const thoughts = data?.items || [];
+    const totalPages = data ? Math.ceil(data.total / data.limit) : 1;
 
     // Expanded Rows State
     const [expandedThoughtIds, setExpandedThoughtIds] = useState<Set<number>>(new Set());
 
-    const fetchThoughts = useCallback(async () => {
-        setLoading(true);
-        try {
-            const params: any = { page, limit: 50 };
-            if (selectedTag) params.tag = selectedTag;
-            if (selectedEmotion) params.emotion = selectedEmotion;
-            if (selectedPersona) params.persona_id = selectedPersona;
-
-            const res = await axios.get<{ items: Thought[], total: number, page: number, limit: number }>(`${API_BASE_URL}/thoughts/`, { params });
-            setThoughts(res.data.items);
-            setTotalPages(Math.ceil(res.data.total / res.data.limit));
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    }, [page, selectedTag, selectedEmotion, selectedPersona]);
-
-    useEffect(() => {
-        axios.get<Persona[]>(`${API_BASE_URL}/personas/`).then(res => setPersonas(res.data)).catch(console.error);
-    }, []);
-
-    useEffect(() => {
-        fetchThoughts();
-    }, [fetchThoughts, refreshKey]);
-
-    const handleDelete = async (id: number) => {
+    const handleDelete = (id: number) => {
         if (!window.confirm("Delete this thought?")) return;
-        try {
-            await axios.delete(`${API_BASE_URL}/thoughts/${id}`);
-            fetchThoughts();
-        } catch (err) { console.error(err); }
+        deleteMutation.mutate(id);
     };
 
     const toggleExpand = (id: number) => {

@@ -1,29 +1,29 @@
-# Missing Frontend Test Cases
+# Missing Frontend Test Cases (COMPLETE)
 
 The following files have low test coverage and require basic unit test cases. Edge cases are not required.
 
-## Core Application
+## Core Application (COMPLETE)
 
-- `src/App.tsx`
+- [x] `src/App.tsx`
 
-## Pages
+## Pages (COMPLETE)
 
-- `src/pages/ConversationGenerator/index.tsx`
-- `src/pages/EssayGenerator/index.tsx`
-- `src/pages/Personas/index.tsx`
-- `src/pages/ThoughtGenerator/index.tsx`
-- `src/pages/Thoughts/index.tsx`
+- [x] `src/pages/ConversationGenerator/index.tsx`
+- [x] `src/pages/EssayGenerator/index.tsx`
+- [x] `src/pages/Personas/index.tsx`
+- [x] `src/pages/ThoughtGenerator/index.tsx`
+- [x] `src/pages/Thoughts/index.tsx`
 
-## Components
+## Components (COMPLETE)
 
-- `src/pages/ConversationGenerator/components/AddPersonaModal.tsx`
-- `src/pages/ConversationGenerator/components/ConversationList.tsx`
-- `src/pages/ConversationGenerator/components/ConversationModal.tsx`
-- `src/pages/ConversationGenerator/components/GeneratorModal.tsx`
-- `src/pages/Personas/components/AddPersonaModal.tsx`
-- `src/pages/Personas/components/DerivedPersonaModal.tsx`
-- `src/pages/Personas/components/PersonaDetails.tsx`
-- `src/pages/Personas/components/PersonaList.tsx`
-- `src/pages/Thoughts/components/AddThoughtModal.tsx`
-- `src/pages/Thoughts/components/FilterBar.tsx`
-- `src/pages/Thoughts/components/ThoughtTable.tsx`
+- [x] `src/pages/ConversationGenerator/components/AddPersonaModal.tsx`
+- [x] `src/pages/ConversationGenerator/components/ConversationList.tsx`
+- [x] `src/pages/ConversationGenerator/components/ConversationModal.tsx`
+- [x] `src/pages/ConversationGenerator/components/GeneratorModal.tsx`
+- [x] `src/pages/Personas/components/AddPersonaModal.tsx`
+- [x] `src/pages/Personas/components/DerivedPersonaModal.tsx`
+- [x] `src/pages/Personas/components/PersonaDetails.tsx`
+- [x] `src/pages/Personas/components/PersonaList.tsx`
+- [x] `src/pages/Thoughts/components/AddThoughtModal.tsx`
+- [x] `src/pages/Thoughts/components/FilterBar.tsx`
+- [x] `src/pages/Thoughts/components/ThoughtTable.tsx`

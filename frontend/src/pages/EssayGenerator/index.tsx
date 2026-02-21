@@ -1,67 +1,34 @@
-import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { useState } from 'react';
 import { Box, Typography, TextField, Button, MenuItem, Select, FormControl, InputLabel, Alert, Stack, CircularProgress, Paper } from '@mui/material';
-import type { Persona } from '../../types';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { usePersonas } from '../../hooks/usePersonas';
+import { useEssayStatus, useGenerateEssay } from '../../hooks/useEssay';
 
 export default function EssayGenerator() {
-    const [personas, setPersonas] = useState<Persona[]>([]);
+    const { data: personas = [] } = usePersonas();
     const [selectedPersona, setSelectedPersona] = useState<string>('');
     const [startingText, setStartingText] = useState<string>('');
-    const [isGenerating, setIsGenerating] = useState(false);
     const [jobId, setJobId] = useState<string | null>(null);
-    const [generatedEssay, setGeneratedEssay] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        axios.get<Persona[]>(`${API_BASE_URL}/personas/`).then(res => setPersonas(res.data)).catch(console.error);
-    }, []);
+    const { mutate, isPending: isStartingGeneration, error: generationError } = useGenerateEssay();
+    const { data: essayStatus, isError: isStatusError } = useEssayStatus(jobId);
 
-    useEffect(() => {
-        let interval: number;
-        if (jobId) {
-            interval = window.setInterval(async () => {
-                try {
-                    const res = await axios.get(`${API_BASE_URL}/essay/status/${jobId}`);
-                    if (res.data.status === 'finished') {
-                        setGeneratedEssay(res.data.result);
-                        setIsGenerating(false);
-                        setJobId(null);
-                    } else if (res.data.status === 'failed') {
-                        setError('Generation failed.');
-                        setIsGenerating(false);
-                        setJobId(null);
-                    }
-                } catch (err) {
-                    console.error(err);
-                    setError('Error checking status.');
-                    setIsGenerating(false);
-                    setJobId(null);
-                }
-            }, 2000);
-        }
-        return () => clearInterval(interval);
-    }, [jobId]);
+    const isGenerating = isStartingGeneration || (jobId && essayStatus?.status !== 'finished' && essayStatus?.status !== 'failed');
+    const hasFailed = essayStatus?.status === 'failed' || isStatusError || generationError;
+    const generatedEssay = essayStatus?.status === 'finished' ? essayStatus.result : null;
 
-    const handleGenerate = async () => {
+    const handleGenerate = () => {
         if (!selectedPersona || !startingText.trim()) return;
 
-        setIsGenerating(true);
-        setError(null);
-        setGeneratedEssay(null);
+        setJobId(null);
 
-        try {
-            const res = await axios.post(`${API_BASE_URL}/essay/generate`, {
-                starting_text: startingText,
-                persona_id: parseInt(selectedPersona)
-            });
-            setJobId(res.data.job_id);
-        } catch (err) {
-            console.error(err);
-            setError('Error starting generation.');
-            setIsGenerating(false);
-        }
+        mutate({
+            starting_text: startingText,
+            persona_id: parseInt(selectedPersona)
+        }, {
+            onSuccess: (data) => {
+                setJobId(data.job_id);
+            }
+        });
     };
 
     return (
@@ -98,7 +65,7 @@ export default function EssayGenerator() {
                         {isGenerating ? <CircularProgress size={24} color="inherit" /> : 'Generate Essay'}
                     </Button>
 
-                    {error && <Alert severity="error">{error}</Alert>}
+                    {hasFailed && <Alert severity="error">Error starting or checking generation.</Alert>}
                 </Stack>
             </Paper>
 

@@ -1,41 +1,41 @@
-# Missing Backend Test Cases
+# Missing Backend Test Cases (COMPLETE)
 
 The following files have lower test coverage and need baseline test cases. Edge cases are not required.
 
-## Backend Routers
+## Backend Routers (COMPLETE)
 
-- `backend/routers/conversation_routes.py`
-- `backend/routers/persona_routes.py`
-- `backend/routers/processor_routes.py`
-- `backend/routers/thought_routes.py`
+- [x] `backend/routers/conversation_routes.py`
+- [x] `backend/routers/persona_routes.py`
+- [x] `backend/routers/processor_routes.py`
+- [x] `backend/routers/thought_routes.py`
 
-## DB Service
+## DB Service (COMPLETE)
 
-- `libs/db_service/conversation_service.py`
-- `libs/db_service/persona_service.py`
-- `libs/db_service/service.py`
+- [x] `libs/db_service/conversation_service.py`
+- [x] `libs/db_service/persona_service.py`
+- [x] `libs/db_service/service.py`
 
-## Event Bus and Handlers
+## Event Bus and Handlers (COMPLETE)
 
-- `libs/events/bus.py`
-- `libs/events/handlers.py`
+- [x] `libs/events/bus.py`
+- [x] `libs/events/handlers.py`
 
-## LLM Service
+## LLM Service (COMPLETE)
 
-- `libs/llm_service/base.py`
-- `libs/llm_service/gemini.py`
+- [x] `libs/llm_service/base.py`
+- [x] `libs/llm_service/gemini.py`
 
-## Processor Service
+## Processor Service (COMPLETE)
 
-- `libs/processor_service/service.py`
+- [x] `libs/processor_service/service.py`
 
-## Use Cases
+## Use Cases (COMPLETE)
 
-- `libs/use_cases/conversation_use_cases.py`
-- `libs/use_cases/generation_use_cases.py`
-- `libs/use_cases/thought_use_cases.py`
+- [x] `libs/use_cases/conversation_use_cases.py`
+- [x] `libs/use_cases/generation_use_cases.py`
+- [x] `libs/use_cases/thought_use_cases.py`
 
-## Workers
+## Workers (COMPLETE)
 
-- `workers/tasks.py`
-- `workers/worker.py`
+- [x] `workers/tasks.py`
+- [x] `workers/worker.py`

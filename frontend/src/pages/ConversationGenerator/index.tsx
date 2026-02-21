@@ -1,12 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Typography, Paper, Button, Chip } from '@mui/material';
-import axios from 'axios';
+import { Box, Typography, Paper, Button, Chip, CircularProgress } from '@mui/material';
 import { jsPDF } from 'jspdf';
 import ConversationList from './components/ConversationList';
 import CreateConversationModal from './components/CreateConversationModal';
 import AddPersonaModal from './components/AddPersonaModal';
 import SequenceGeneratorModal from './components/SequenceGeneratorModal';
-import type { Conversation, Persona, Message } from '../../types';
+import type { Message } from '../../types';
+import { usePersonas } from '../../hooks/usePersonas';
+import { 
+    useConversations, 
+    useCreateConversation, 
+    useGenerateMessage, 
+    useAddPersonaToConversation, 
+    useGenerateSequence, 
+    useEndConversation 
+} from '../../hooks/useConversations';
 
 // Soft neutral pastel colors for distinguishing message owners
 const PERSONA_COLORS = [
@@ -29,109 +37,68 @@ const getPersonaColor = (personaId: number): string => {
 // import SendIcon from '@mui/icons-material/Send'; // Assuming material icons might be available or not, avoiding imports if not sure. 
 // Using text buttons for safety if icons not installed.
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
 const ConversationGenerator: React.FC = () => {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [personas, setPersonas] = useState<Persona[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAddPersonaModalOpen, setIsAddPersonaModalOpen] = useState(false);
   const [isSequenceModalOpen, setIsSequenceModalOpen] = useState(false);
+  const [isPolling, setIsPolling] = useState(false);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
+  const { data: personas = [] } = usePersonas();
+  const { data: conversations = [], isLoading: isLoadingConversations } = useConversations(isPolling ? 2000 : false);
+
+  const createMutation = useCreateConversation();
+  const generateMessageMutation = useGenerateMessage();
+  const addPersonaMutation = useAddPersonaToConversation();
+  const sequenceMutation = useGenerateSequence();
+  const endMutation = useEndConversation();
+
   const selectedConversation = conversations.find(c => c.id === selectedConversationId);
-
-  const fetchConversations = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/conversations/`);
-      setConversations(response.data);
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
-    }
-  };
-
-  const fetchPersonas = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/personas/`);
-      setPersonas(response.data);
-    } catch (error) {
-      console.error('Error fetching personas:', error);
-    }
-  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
-    fetchConversations();
-    fetchPersonas();
-  }, []);
-
-  useEffect(() => {
     scrollToBottom();
   }, [selectedConversation?.messages]);
 
-  const handleCreateConversation = async (title: string, context: string, personaIds: number[]) => {
-    try {
-      await axios.post(`${API_BASE_URL}/conversations/`, { title, context, persona_ids: personaIds });
-      fetchConversations();
-    } catch (error) {
-      console.error('Error creating conversation:', error);
-    }
+  const startPolling = () => {
+      setIsPolling(true);
+      setTimeout(() => setIsPolling(false), 10000);
   };
 
-  const handleGenerateMessage = async (personaId: number) => {
+  const handleCreateConversation = (title: string, context: string, personaIds: number[]) => {
+      createMutation.mutate({ title, context, persona_ids: personaIds });
+  };
+
+  const handleGenerateMessage = (personaId: number) => {
     if (!selectedConversationId) return;
-    try {
-      await axios.post(`${API_BASE_URL}/conversations/${selectedConversationId}/generate`, { persona_id: personaId });
-      // Poll or re-fetch? For now re-fetch after a delay or optimistically?
-      // Since it's async worker, we should probably poll.
-      // For simplicity, let's just alert user or show loading state?
-      // Better: Poll every few seconds if active.
-      // Let's just trigger a fetch after 2 seconds for demo purposes.
-      setTimeout(fetchConversations, 2000);
-      setTimeout(fetchConversations, 5000);
-    } catch (error) {
-      console.error('Error generating message:', error);
-    }
+    generateMessageMutation.mutate({ conversationId: selectedConversationId, personaId }, {
+        onSuccess: () => startPolling()
+    });
   };
 
-  const handleAddPersona = async (personaId: number) => {
+  const handleAddPersona = (personaId: number) => {
       if (!selectedConversationId) return;
-      try {
-          await axios.post(`${API_BASE_URL}/conversations/${selectedConversationId}/personas`, { persona_id: personaId });
-          fetchConversations();
-      } catch (error) {
-          console.error('Error adding persona:', error);
-      }
+      addPersonaMutation.mutate({ conversationId: selectedConversationId, personaId });
   };
 
-  const handleGenerateSequence = async (personaIds: number[]) => {
+  const handleGenerateSequence = (personaIds: number[]) => {
       if (!selectedConversationId) return;
-      try {
-          await axios.post(`${API_BASE_URL}/conversations/${selectedConversationId}/generate_sequence`, { persona_ids: personaIds });
-          // Poll to see the messages appear
-          setTimeout(fetchConversations, 2000);
-          setTimeout(fetchConversations, 5000);
-          setTimeout(fetchConversations, 8000);
-      } catch (error) {
-          console.error('Error generating sequence:', error);
-      }
+      sequenceMutation.mutate({ conversationId: selectedConversationId, personaIds }, {
+          onSuccess: () => startPolling()
+      });
   };
 
-  const handleEndConversation = async () => {
+  const handleEndConversation = () => {
       if (!selectedConversationId) return;
       if (!window.confirm("Are you sure? This will convert all messages to thoughts.")) return;
-      
-      try {
-          await axios.post(`${API_BASE_URL}/conversations/${selectedConversationId}/end`);
-          alert("Conversation ended and thoughts created!");
-          // Maybe refresh thoughts?
-      } catch (error) {
-          console.error('Error ending conversation:', error);
-      }
+      endMutation.mutate(selectedConversationId, {
+          onSuccess: () => alert("Conversation ended and thoughts created!"),
+          onError: () => alert("Error ending conversation")
+      });
   };
 
   const handleDownloadPdf = () => {
@@ -208,12 +175,16 @@ const ConversationGenerator: React.FC = () => {
     <Box sx={{ display: 'flex', height: 'calc(100vh - 100px)', gap: 2, p: 2 }}>
       {/* Sidebar */}
       <Box sx={{ width: 300, flexShrink: 0 }}>
-        <ConversationList
-          conversations={conversations}
-          selectedId={selectedConversationId}
-          onSelect={setSelectedConversationId}
-          onCreateNew={() => setIsCreateModalOpen(true)}
-        />
+        {isLoadingConversations ? (
+             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}><CircularProgress /></Box>
+        ) : (
+            <ConversationList
+              conversations={conversations}
+              selectedId={selectedConversationId}
+              onSelect={setSelectedConversationId}
+              onCreateNew={() => setIsCreateModalOpen(true)}
+            />
+        )}
       </Box>
 
       {/* Main Chat Area */}
@@ -325,6 +296,7 @@ const ConversationGenerator: React.FC = () => {
                         variant="outlined" 
                         size="small"
                         onClick={() => handleGenerateMessage(p.id)}
+                        disabled={generateMessageMutation.isPending || isPolling}
                     >
                         {p.name}
                     </Button>
@@ -335,6 +307,7 @@ const ConversationGenerator: React.FC = () => {
                     color="secondary" 
                     size="small"
                     onClick={() => setIsSequenceModalOpen(true)}
+                    disabled={sequenceMutation.isPending || isPolling}
                 >
                     Sequence Generator
                 </Button>

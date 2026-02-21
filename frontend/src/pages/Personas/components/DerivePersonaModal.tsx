@@ -1,45 +1,35 @@
 import { useState } from 'react';
+import { useDerivePersona } from '../../../hooks/usePersonas';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
     Typography, Slider, Box
 } from '@mui/material';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 
 interface DerivePersonaModalProps {
     open: boolean;
     onClose: () => void;
-    onSuccess: () => void;
     sourcePersonaId: number | null;
     sourcePersonaName: string;
 }
 
-export default function DerivePersonaModal({ open, onClose, onSuccess, sourcePersonaId, sourcePersonaName }: DerivePersonaModalProps) {
+export default function DerivePersonaModal({ open, onClose, sourcePersonaId, sourcePersonaName }: DerivePersonaModalProps) {
     const [nameAdjective, setNameAdjective] = useState('');
     const [percentage, setPercentage] = useState(30);
+
+    const deriveMutation = useDerivePersona();
 
     const handleSubmit = async () => {
         if (!sourcePersonaId) return;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/personas/derive`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    source_persona_id: sourcePersonaId,
-                    name_adjective: nameAdjective,
-                    percentage: percentage
-                }),
+            await deriveMutation.mutateAsync({
+                source_persona_id: sourcePersonaId,
+                name_adjective: nameAdjective,
+                percentage: percentage
             });
-
-            if (response.ok) {
-                onSuccess();
-                onClose();
-            } else {
-                console.error('Failed to derive persona');
-            }
+            onClose();
         } catch (error) {
             console.error('Error deriving persona:', error);
         }

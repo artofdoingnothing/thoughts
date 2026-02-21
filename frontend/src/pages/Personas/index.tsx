@@ -1,36 +1,20 @@
-import { useState, useEffect } from 'react';
-import { Grid, Container } from '@mui/material';
+import { useState } from 'react';
+import { Grid, Container, CircularProgress, Box, Typography } from '@mui/material';
 import PersonaList from './components/PersonaList';
 import PersonaDetails from './components/PersonaDetails';
 import CreatePersonaModal from './components/CreatePersonaModal';
 import DerivePersonaModal from './components/DerivePersonaModal';
 import type { Persona } from '../../types';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+import { usePersonas, useRegeneratePersona } from '../../hooks/usePersonas';
 
 export default function PersonasPage() {
-    const [personas, setPersonas] = useState<Persona[]>([]);
+    const { data: personas = [], isLoading, isError } = usePersonas();
+    const regenerateMutation = useRegeneratePersona();
     const [selectedId, setSelectedId] = useState<number | null>(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
     const [isDeriveModalOpen, setIsDeriveModalOpen] = useState(false);
     const [derivingPersona, setDerivingPersona] = useState<Persona | null>(null);
-
-    const fetchPersonas = async () => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/personas/`);
-            if (response.ok) {
-                const data = await response.json();
-                setPersonas(data);
-            }
-        } catch (error) {
-            console.error('Failed to fetch personas:', error);
-        }
-    };
-
-    useEffect(() => {
-        fetchPersonas();
-    }, []);
 
     const handleCreate = () => {
         setEditingPersona(null);
@@ -53,33 +37,30 @@ export default function PersonasPage() {
         }
 
         try {
-            const response = await fetch(`${API_BASE_URL}/personas/${persona.id}/regenerate`, {
-                method: 'POST',
-            });
-
-            if (response.ok) {
-                await fetchPersonas();
-                // If the regenerated persona was selected, update the selection details
-                if (selectedId === persona.id) {
-                     // trigger re-render of details by fetching fresh list which we did
-                }
-            } else {
-                console.error('Failed to regenerate persona');
-                alert('Failed to regenerate persona. Ensure it has thoughts.');
-            }
+            await regenerateMutation.mutateAsync(persona.id);
         } catch (error) {
             console.error('Error regenerating persona:', error);
             alert('Error regenerating persona.');
         }
     };
 
-    const handleSuccess = () => {
-        fetchPersonas();
-        setEditingPersona(null);
-        setDerivingPersona(null);
-    };
-
     const selectedPersona = personas.find(p => p.id === selectedId) || null;
+
+    if (isLoading) {
+        return (
+            <Box display="flex" justifyContent="center" alignItems="center" height="calc(100vh - 100px)">
+                <CircularProgress />
+            </Box>
+        );
+    }
+
+    if (isError) {
+        return (
+            <Box display="flex" justifyContent="center" alignItems="center" height="calc(100vh - 100px)">
+                <Typography color="error">Failed to load personas.</Typography>
+            </Box>
+        );
+    }
 
     return (
         <Container maxWidth="xl" sx={{ mt: 4, mb: 4, height: 'calc(100vh - 100px)' }}>
@@ -107,7 +88,6 @@ export default function PersonasPage() {
                         setIsCreateModalOpen(false);
                         setEditingPersona(null);
                     }}
-                    onSuccess={handleSuccess}
                     initialData={editingPersona}
                 />
             )}
@@ -119,7 +99,6 @@ export default function PersonasPage() {
                         setIsDeriveModalOpen(false);
                         setDerivingPersona(null);
                     }}
-                    onSuccess={handleSuccess}
                     sourcePersonaId={derivingPersona.id}
                     sourcePersonaName={derivingPersona.name}
                 />

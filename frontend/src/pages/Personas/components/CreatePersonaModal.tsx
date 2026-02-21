@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useCreatePersona, useUpdatePersona } from '../../../hooks/usePersonas';
 import {
     Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
     Box, IconButton, Typography, Stack
@@ -12,16 +13,18 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 interface CreatePersonaModalProps {
     open: boolean;
     onClose: () => void;
-    onSuccess: () => void;
     initialData?: any; // For edit mode
 }
 
-export default function CreatePersonaModal({ open, onClose, onSuccess, initialData }: CreatePersonaModalProps) {
+export default function CreatePersonaModal({ open, onClose, initialData }: CreatePersonaModalProps) {
     const [name, setName] = useState('');
     const [age, setAge] = useState<number | string>('');
     const [gender, setGender] = useState('');
     const [additionalInfo, setAdditionalInfo] = useState<{ key: string; value: string }[]>([]);
     const [isGenerating, setIsGenerating] = useState(false);
+
+    const createMutation = useCreatePersona();
+    const updateMutation = useUpdatePersona();
 
     useEffect(() => {
         if (open) {
@@ -97,26 +100,12 @@ export default function CreatePersonaModal({ open, onClose, onSuccess, initialDa
         };
 
         try {
-            const url = initialData 
-                ? `${API_BASE_URL}/personas/${initialData.id}`
-                : `${API_BASE_URL}/personas/`;
-            
-            const method = initialData ? 'PUT' : 'POST';
-
-            const response = await fetch(url, {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (response.ok) {
-                onSuccess();
-                onClose();
+            if (initialData) {
+                await updateMutation.mutateAsync({ id: initialData.id, payload });
             } else {
-                console.error('Failed to save persona');
+                await createMutation.mutateAsync(payload);
             }
+            onClose();
         } catch (error) {
             console.error('Error saving persona:', error);
         }

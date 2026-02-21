@@ -11,42 +11,39 @@ import {
     Typography,
     CircularProgress
 } from '@mui/material';
-import axios from 'axios';
+import { useCreateThought } from '../../../hooks/useThoughts';
 
 interface CreateThoughtModalProps {
     open: boolean;
     onClose: () => void;
     onSuccess: () => void;
-    apiBaseUrl: string;
 }
 
 const AVAILABLE_EMOTIONS = ['Happy', 'Sad', 'Angry', 'Anxious', 'Excited', 'Calm'];
 
-const CreateThoughtModal: React.FC<CreateThoughtModalProps> = ({ open, onClose, onSuccess, apiBaseUrl }) => {
+const CreateThoughtModal: React.FC<CreateThoughtModalProps> = ({ open, onClose, onSuccess }) => {
     const [content, setContent] = useState('');
     const [selectedEmotions, setSelectedEmotions] = useState<string[]>([]);
-    const [loading, setLoading] = useState(false);
+    const { mutate, isPending: loading } = useCreateThought();
 
-    const handleSubmit = async (e?: React.FormEvent) => {
+    const handleSubmit = (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         if (!content) return;
 
-        setLoading(true);
-        try {
-            await axios.post(`${apiBaseUrl}/thoughts/`, {
-                content,
-                emotions: selectedEmotions
-            });
-            setContent('');
-            setSelectedEmotions([]);
-            onSuccess();
-            onClose();
-        } catch (error) {
-            console.error('Error creating thought:', error);
-            // Ideally show error toast
-        } finally {
-            setLoading(false);
-        }
+        mutate({
+            content,
+            emotions: selectedEmotions
+        }, {
+            onSuccess: () => {
+                setContent('');
+                setSelectedEmotions([]);
+                onSuccess();
+                onClose();
+            },
+            onError: (error) => {
+                console.error('Error creating thought:', error);
+            }
+        });
     };
 
     const toggleEmotion = (emotion: string) => {

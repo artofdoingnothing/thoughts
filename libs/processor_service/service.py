@@ -170,6 +170,7 @@ class ProcessorService:
             recent_messages=formatted_messages,
             other_personas_info=other_personas_info
         )
+        print(f"Generated conversation message prompt: {prompt}")
         raw_output = self.llm.generate_content(prompt)
         
         # Parse the structured JSON response
