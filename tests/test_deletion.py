@@ -30,7 +30,7 @@ def test_delete_persona_cascades():
     session.commit()
     
     # Create thought linked to persona
-    t = Thought(title="T1", content="C1", persona_id=p.id)
+    t = Thought(content="C1", persona_id=p.id)
     session.add(t)
     session.commit()
     
