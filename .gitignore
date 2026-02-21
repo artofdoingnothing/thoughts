@@ -24,3 +24,11 @@ dist/
 Thumbs.db
 
 Next.md
+
+# Coverage
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+coverage/
+coverage_*.txt
