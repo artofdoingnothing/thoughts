@@ -7,8 +7,6 @@ sys.modules["google.genai"] = MagicMock()
 
 import os
 os.environ["GEMINI_API_KEY"] = "dummy_key"
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"
-
 from fastapi.testclient import TestClient
 from backend.main import app
 from libs.db_service import init_database, ThoughtService

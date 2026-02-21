@@ -45,11 +45,10 @@ def update_persona(persona_id: int, persona_update: PersonaUpdate):
 
 @router.post("/generate-name")
 def generate_persona_name():
-    from libs.llm_service.gemini import GeminiLLM
+    from faker import Faker
     try:
-        llm = GeminiLLM()
-        prompt = "Generate a single creative persona name consisting of 2 or 3 words. Return ONLY the name."
-        name = llm.generate_content(prompt).strip().replace('"', '').replace('.', '')
+        fake = Faker()
+        name = fake.name()
         return {"name": name}
     except Exception as e:
         return {"name": "Random Persona"}

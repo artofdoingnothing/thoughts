@@ -44,16 +44,25 @@ This project provides a suite of tools for thought analysis and generation:
 2.  **Configure Environment Variables**
     Create a `.env` file in the root directory. You can use the template below.
 
-3.  **Run with Docker Compose**
+3.  **Run Services**
+    You can use the provided bash script to start the services either via Docker or locally on your machine.
+
     ```bash
-    docker-compose up --build
+    ./run.sh
     ```
-    This will start all services:
-    - **Backend API**: Available at `http://localhost:8000`
-    - **Frontend**: Available at `http://localhost:3002`
-    - **Database (Postgres)**: Port `5432`
-    - **Redis**: Port `6379`
-    - **Background Workers**: For processing analysis and generation tasks.
+
+    This will present a terminal menu with the following options:
+    - **1. Start Infrastructure (Postgres/Redis) via Docker**: Useful if you want to run the core app code locally but need the databases active.
+    - **2. Start All Services via Docker**: Runs everything, including the app and workers, isolated in Docker.
+    - **3. Start Services Locally**: Starts the Backend, Workers, and Frontend natively on your machine (requires Postgres/Redis to be running via option 1 or manually). This will also set up a Python virtual environment automatically using `mise`.
+    - **4. Stop All Docker Services**: Brings down the Docker Compose environment.
+    - **5. Exit**
+
+    If you choose to run everything via Docker (Option 2), the following services will be available:
+    - **Backend API**: `http://localhost:8000`
+    - **Frontend**: `http://localhost:3002`
+
+    If you choose to run local services (Option 3), they will also use the same ports respectively.
 
 ## Environment Variables Template
 

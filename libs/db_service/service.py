@@ -309,8 +309,10 @@ class ThoughtService:
             print(f"Error finding closest thought: {e}")
             return None
 
+from .models import init_db
+
 def init_database():
-    pass
+    init_db()
 
 def get_db():
     return SessionLocal
