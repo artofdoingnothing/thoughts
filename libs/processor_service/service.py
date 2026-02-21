@@ -156,7 +156,7 @@ class ProcessorService:
         conversation_context: str,
         recent_messages: List[Dict[str, str]],
         other_personas_info: str
-    ) -> str:
+    ) -> List[str]:
         formatted_messages = ""
         for msg in recent_messages:
             formatted_messages += f"{msg['persona']}: {msg['content']}\n"
@@ -170,4 +170,24 @@ class ProcessorService:
             recent_messages=formatted_messages,
             other_personas_info=other_personas_info
         )
-        return self.llm.generate_content(prompt)
+        raw_output = self.llm.generate_content(prompt)
+        
+        # Parse the structured JSON response
+        try:
+            cleaned = raw_output.strip()
+            # Strip markdown code fences if present
+            match = re.search(r"```(?:\w+)?\s*(.*?)```", cleaned, re.DOTALL)
+            if match:
+                cleaned = match.group(1).strip()
+            
+            parsed = json.loads(cleaned)
+            if isinstance(parsed, dict) and "messages" in parsed:
+                messages = [m["content"] for m in parsed["messages"] if "content" in m]
+                if messages:
+                    return messages
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            print(f"Error parsing multi-message response: {e}. Raw: {raw_output}")
+        
+        # Fallback: return raw output as a single message
+        return [raw_output.strip()]
+

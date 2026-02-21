@@ -200,8 +200,8 @@ Starting Text:
 """
 
 CONVERSATION_MESSAGE_GENERATION_PROMPT = """
-You are roleplaying as a specific persona in a conversation.
-Your goal is to contribute to the conversation naturally, staying in character.
+You are roleplaying as a specific persona in a social conversation among people who know each other.
+Your goal is to contribute naturally, staying fully in character.
 
 Persona Details:
 Name: {persona_name}
@@ -218,10 +218,27 @@ Conversation Context:
 Recent Messages:
 {recent_messages}
 
-Constraints:
-- Respond as {persona_name} (Age: {persona_age}, Gender: {persona_gender}).
-- Keep the response extremely concise, between 15-25 words.
-- Respond as the persona would at their given age of {persona_age}.
+## Age-Based Communication Style (CRITICAL — follow strictly)
+
+Based on the persona's age of {persona_age}, adjust the messaging style:
+
+- **Teens (13-19)**: Send 2-3 short, rapid-fire messages. Use slang, abbreviations (lol, ngl, idk, fr, lowkey), emojis, and incomplete sentences. Split thoughts across multiple messages. Keep each message under 15 words. Example: "wait what" / "noo thats crazy lmaooo" / "ok but fr tho 😭"
+- **Young Adults (20-35)**: Send 1-3 messages. Mix casual tone with more complete thoughts. Occasional slang is fine. Each message 10-25 words. May split a thought across 2 messages or add an afterthought.
+- **Middle-Aged (36-55)**: Send 1-2 messages. Use complete, composed sentences. Moderate vocabulary. Each message 15-30 words. If sending 2 messages, the second is a follow-up or clarification.
+- **Older Adults (56+)**: Send 1 message (rarely 2). Use proper grammar, full sentences, and a warm or considered tone. Message can be 20-40 words.
+
+## Constraints
+- Respond as {persona_name} would at age {persona_age}.
+- Messages in the sequence MUST be related and flow naturally (e.g., continuing a thought, adding a reaction, clarifying).
 - Reflect the persona's characteristics and emotions from their profile.
-- Do NOT include the persona name at the start of the message. Just the message content.
+- Do NOT include the persona name at the start of any message.
+- Return the result strictly as valid JSON. No other text.
+
+Output format:
+{{
+  "messages": [
+    {{"content": "first message"}},
+    {{"content": "optional follow-up message"}}
+  ]
+}}
 """

@@ -78,6 +78,9 @@ class GenerateMessageRequest(BaseModel):
 class AddPersonaToConversationRequest(BaseModel):
     persona_id: int
 
+class GenerateSequenceRequest(BaseModel):
+    persona_ids: List[int]
+
 
 @app.on_event("startup")
 def startup():
@@ -296,6 +299,19 @@ def generate_message(conversation_id: int, request: GenerateMessageRequest):
     q_generation.enqueue("workers.tasks.generate_conversation_message", conversation_id, request.persona_id)
     
     return {"message": "Message generation passed to worker"}
+
+@app.post("/conversations/{conversation_id}/generate_sequence")
+def generate_sequence(conversation_id: int, request: GenerateSequenceRequest):
+    conversation = ThoughtService.get_conversation(conversation_id)
+    if not conversation:
+         raise HTTPException(status_code=404, detail="Conversation not found")
+    
+    # Enqueue task
+    q_generation = Queue('generation', connection=redis_conn)
+    q_generation.enqueue("workers.tasks.generate_conversation_sequence", conversation_id, request.persona_ids)
+    
+    return {"message": "Message sequence generation passed to worker"}
+
 
 @app.post("/conversations/{conversation_id}/personas")
 def add_persona_to_conversation(conversation_id: int, request: AddPersonaToConversationRequest):

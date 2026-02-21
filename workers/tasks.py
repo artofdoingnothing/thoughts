@@ -210,10 +210,6 @@ def generate_conversation_message(conversation_id, persona_id):
         return
 
     # Get recent messages (last 5)
-    # The conversation object from get_conversation has messages, likely sorted by some order or just all.
-    # Service returns joinedload results. The order in DB is usually by insertion, but let's sort to be safe if not ordered.
-    # The models don't enforce order in relationship by default unless adding order_by.
-    # We should sort by created_at.
     sorted_messages = sorted(conversation.messages, key=lambda m: m.created_at)
     recent = sorted_messages[-5:]
     
@@ -231,7 +227,7 @@ def generate_conversation_message(conversation_id, persona_id):
     if not other_personas_info:
         other_personas_info = "None"
 
-    response_content = processor.generate_conversation_message(
+    message_contents = processor.generate_conversation_message(
         persona_name=persona.name,
         persona_age=persona.age,
         persona_gender=persona.gender,
@@ -241,13 +237,29 @@ def generate_conversation_message(conversation_id, persona_id):
         other_personas_info=other_personas_info
     )
     
-    print(f"Generated response: {response_content}")
+    print(f"Generated {len(message_contents)} message(s): {message_contents}")
     
-    ThoughtService.add_message(
-        conversation_id=conversation_id, 
-        persona_id=persona_id, 
-        content=response_content, 
-        is_generated=True
-    )
-    print("Message added to conversation.")
+    for content in message_contents:
+        ThoughtService.add_message(
+            conversation_id=conversation_id, 
+            persona_id=persona_id, 
+            content=content, 
+            is_generated=True
+        )
+    print(f"{len(message_contents)} message(s) added to conversation.")
 
+
+def generate_conversation_sequence(conversation_id: int, persona_ids: list):
+    print(f"Generating conversation sequence for conversation {conversation_id}, personas {persona_ids}...")
+    conversation = ThoughtService.get_conversation(conversation_id)
+    
+    if not conversation:
+        print("Conversation not found.")
+        return
+
+    # Sequentially call generate_conversation_message to build the context properly over time
+    for persona_id in persona_ids:
+        print(f"Sequence step: Generating message for persona {persona_id}")
+        generate_conversation_message(conversation_id, persona_id)
+        
+    print(f"Completed conversation sequence generation for conversation {conversation_id}.")
