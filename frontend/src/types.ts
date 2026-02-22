@@ -71,3 +71,17 @@ export interface Conversation {
     messages: Message[];
     personas: Persona[];
 }
+
+export interface MovieCharacter {
+    movie_id: string;
+    movie_title: string;
+    movie_year: string;
+    movie_imdb_rating: string;
+    movie_genres: string[];
+    character_id: string;
+    character_name: string;
+}
+
+export interface MovieSearchResponse {
+    results: MovieCharacter[];
+}

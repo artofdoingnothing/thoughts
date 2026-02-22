@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import thought_router, persona_router, conversation_router, processor_router
+from backend.routers import thought_router, persona_router, conversation_router, processor_router, dataset_router
 from libs.events.handlers import register_handlers
 
 app = FastAPI(title="Thought Aggregator API")
@@ -26,3 +26,4 @@ app.include_router(thought_router)
 app.include_router(persona_router)
 app.include_router(conversation_router)
 app.include_router(processor_router)
+app.include_router(dataset_router)

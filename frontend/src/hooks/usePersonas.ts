@@ -63,3 +63,13 @@ export function useRegeneratePersona() {
         },
     });
 }
+
+export function useGeneratePersonaFromMovieCharacters() {
+    return useMutation({
+        mutationFn: async (payload: { character_ids: string[] }) => {
+            const { data } = await api.post('/personas/generate-from-movie-characters', payload);
+            return data;
+        },
+        // Invalidate may not be needed immediately if it's a background task, but good practice
+    });
+}

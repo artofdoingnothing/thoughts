@@ -33,6 +33,7 @@ const Layout: React.FC<LayoutProps> = ({ children, onNewThought }) => {
         { text: 'Thought Generator', icon: <CreateIcon />, path: '/generate' },
         { text: 'Essay', icon: <ArticleIcon />, path: '/essay' },
         { text: 'Conversations', icon: <ForumIcon />, path: '/conversation-generator' },
+        { text: 'Movie Characters', icon: <PersonIcon />, path: '/character-search' },
     ];
 
     return (

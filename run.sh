@@ -65,7 +65,7 @@ while true; do
             # Run Migrations
             echo "Running migrations..."
             export PYTHONPATH=.
-            python migrate_db.py
+            python scripts/migrate_db.py
             
             # Start Backend
             echo "Starting Backend API..."

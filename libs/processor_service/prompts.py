@@ -242,3 +242,49 @@ Output format:
   ]
 }}
 """
+
+THOUGHT_GENERATION_FROM_DIALOGUE_PROMPT = """
+You are an AI psychologist.
+Analyze the following snippets of dialogue spoken by a specific movie character.
+Extract exactly 5 distinct inner thoughts or reflections that this character might have based on these dialogues.
+A "thought" is a specific idea, opinion, or reflection reflecting their personality.
+
+Constraints:
+- Extract complete thoughts or small paragraphs.
+- Make inferences about their worldview, fears, or desires.
+- Return the result strictly as a valid JSON list of strings. Do not include any other text or explanation.
+
+Character Dialogues:
+{dialogues_text}
+
+Output format: ["Thought 1...", "Thought 2...", "Thought 3...", "Thought 4...", "Thought 5..."]
+"""
+
+PERSONA_SYNTHESIS_FROM_THOUGHTS_PROMPT = """
+You are an expert psychological profiler and character creator.
+Based on the following collection of thoughts generated for a movie character, synthesize a complete, entirely new Persona profile.
+You must auto-fill or creatively infer missing information such as a suitable name (can be a new creative name), age, gender, and deep psychological profile.
+The persona should feel cohesive and derived from the themes, tone, and worldview present in the thoughts.
+
+Thoughts:
+{thoughts_list}
+
+Constraints:
+- Return the result strictly as a valid JSON object.
+- The age should be an integer.
+- The profile can contain keys like "background", "core_beliefs", "fears", "desires".
+
+Output format:
+{{
+  "name": "Jane Doe",
+  "age": 30,
+  "gender": "Female",
+  "profile": {{
+    "background": "...",
+    "core_beliefs": "...",
+    "fears": "...",
+    "desires": "..."
+  }}
+}}
+"""
+

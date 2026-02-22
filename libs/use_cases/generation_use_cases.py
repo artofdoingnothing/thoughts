@@ -1,8 +1,11 @@
-from libs.db_service import ThoughtService, PersonaService
-from libs.processor_service import ProcessorService
+import random
+
 import requests
 from bs4 import BeautifulSoup
-import random
+
+from libs.db_service import PersonaService, ThoughtService
+from libs.processor_service import ProcessorService
+
 
 class GenerationUseCases:
     def __init__(self):
@@ -11,14 +14,14 @@ class GenerationUseCases:
     def parse_blog(self, url: str) -> str:
         response = requests.get(url, timeout=10)
         response.raise_for_status()
-        
-        soup = BeautifulSoup(response.content, 'html.parser')
-        paragraphs = [p.get_text() for p in soup.find_all('p')]
+
+        soup = BeautifulSoup(response.content, "html.parser")
+        paragraphs = [p.get_text() for p in soup.find_all("p")]
         text_content = "\\n".join(paragraphs)
-        
+
         if len(text_content) < 100:
             text_content = soup.get_text()
-            
+
         return text_content
 
     def generate_thoughts_from_text(self, text_content: str) -> list[str]:
@@ -29,40 +32,97 @@ class GenerationUseCases:
         if not persona:
             return "Error: Persona not found"
 
-        persona_details = f"Name: {persona.name}, Age: {persona.age}, Gender: {persona.gender}"
-        
+        persona_details = (
+            f"Name: {persona.name}, Age: {persona.age}, Gender: {persona.gender}"
+        )
+
         if persona.profile:
-            emotions = self.processor.extract_emotions_from_profile(starting_text, persona.profile)
+            emotions = self.processor.extract_emotions_from_profile(
+                starting_text, persona.profile
+            )
             return self.processor.complete_essay_with_profile(
                 starting_text=starting_text,
                 persona_details=persona_details,
-                emotions=emotions
+                emotions=emotions,
             )
         else:
             unique_attrs = PersonaService.get_persona_unique_attributes(persona_id)
             thought_types = unique_attrs.get("thought_types", [])
             action_orientations = unique_attrs.get("action_orientations", [])
-            
-            selected_type = random.choice(thought_types) if thought_types else "Automatic"
-            selected_action = random.choice(action_orientations) if action_orientations else "Ruminative"
-            
+
+            selected_type = (
+                random.choice(thought_types) if thought_types else "Automatic"
+            )
+            selected_action = (
+                random.choice(action_orientations)
+                if action_orientations
+                else "Ruminative"
+            )
+
             draft_result = self.processor.generate_essay_draft_and_tags(
                 starting_text=starting_text,
                 persona_details=persona_details,
                 thought_type=selected_type,
-                action_orientation=selected_action
+                action_orientation=selected_action,
             )
-            
+
             draft_essay = draft_result.get("essay", "")
             generated_tags = draft_result.get("tags", [])
-            
+
             final_essay = draft_essay
-            
+
             if generated_tags:
-                closest_thought = ThoughtService.find_closest_thought_by_tags(generated_tags, persona_id)
+                closest_thought = ThoughtService.find_closest_thought_by_tags(
+                    generated_tags, persona_id
+                )
                 if closest_thought:
                     emotions = [e.name for e in closest_thought.emotions]
                     if emotions:
                         final_essay = self.processor.modify_essay(draft_essay, emotions)
-                
+
         return final_essay
+
+    def generate_persona_from_movie_characters(self, character_ids: list[str]) -> dict:
+        from libs.dataset_service.movie_dataset_service import MovieDatasetService
+
+        movie_service = MovieDatasetService()
+
+        all_thoughts = []
+        for character_id in character_ids:
+            # 1. Extract 100 dialogues for EACH character
+            dialogues_nested = movie_service.get_character_dialogues(
+                character_id, limit=100
+            )
+
+            conversations = []
+            for conversation in dialogues_nested:
+                conversations.append(" ".join(conversation))
+
+            if len(conversations) > 100:
+                conversations = random.sample(conversations, 100)
+
+            if conversations:
+                # 2. Invoke AI Processing to generate 5 thoughts for this character
+                thoughts = self.processor.generate_thoughts_from_character_dialogue(
+                    conversations
+                )
+                all_thoughts.extend(thoughts)
+
+        if not all_thoughts:
+            raise ValueError(
+                "Failed to generate any thoughts from the selected characters' dialogues"
+            )
+
+        # 3. Synthesize ONE Persona profile based on the ENTIRE collection of generated thoughts
+        persona_data = self.processor.synthesize_persona_from_thoughts(all_thoughts)
+
+        # 4. Save the new Persona
+        new_persona = PersonaService.create_persona(
+            name=persona_data.get("name", "Unknown Derived Character"),
+            age=persona_data.get("age", 30),
+            gender=persona_data.get("gender", "Unknown"),
+            profile=persona_data.get("profile", {}),
+        )
+
+        # We return the data so a worker can enqueue the other analyzes
+        return {"persona_id": new_persona.id, "thoughts": all_thoughts}

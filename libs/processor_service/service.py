@@ -1,10 +1,26 @@
-import json
 import ast
-import random
+import json
 import re
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from libs.llm_service import LLMFactory
-from .prompts import COGNITIVE_DISTORTION_PROMPT, SENTIMENT_ANALYSIS_PROMPT, THOUGHT_GENERATION_PROMPT, ACTION_ORIENTATION_PROMPT, THOUGHT_TYPE_PROMPT, ESSAY_DRAFT_AND_TAG_PROMPT, ESSAY_MODIFICATION_PROMPT, TOPIC_ANALYSIS_PROMPT, PROFILE_EMOTION_EXTRACTION_PROMPT, ESSAY_COMPLETION_FROM_PROFILE_PROMPT, CONVERSATION_MESSAGE_GENERATION_PROMPT
+
+from .prompts import (
+    ACTION_ORIENTATION_PROMPT,
+    COGNITIVE_DISTORTION_PROMPT,
+    CONVERSATION_MESSAGE_GENERATION_PROMPT,
+    ESSAY_COMPLETION_FROM_PROFILE_PROMPT,
+    ESSAY_DRAFT_AND_TAG_PROMPT,
+    ESSAY_MODIFICATION_PROMPT,
+    PERSONA_SYNTHESIS_FROM_THOUGHTS_PROMPT,
+    PROFILE_EMOTION_EXTRACTION_PROMPT,
+    SENTIMENT_ANALYSIS_PROMPT,
+    THOUGHT_GENERATION_FROM_DIALOGUE_PROMPT,
+    THOUGHT_GENERATION_PROMPT,
+    THOUGHT_TYPE_PROMPT,
+    TOPIC_ANALYSIS_PROMPT,
+)
+
 
 class ProcessorService:
     def __init__(self):
@@ -21,9 +37,9 @@ class ProcessorService:
             match = re.search(r"```(?:\w+)?\s*(.*?)```", output, re.DOTALL)
             if match:
                 output = match.group(1).strip()
-            
+
             output = output.strip()
-            
+
             # Try JSON parsing first as it is safer and standard
             try:
                 result = json.loads(output)
@@ -64,86 +80,80 @@ class ProcessorService:
     def analyze_action_orientation(self, thought_content: str) -> str:
         prompt = ACTION_ORIENTATION_PROMPT.format(thought_content=thought_content)
         result = self.llm.generate_content(prompt)
-        cleaned = result.strip().replace('"', '').replace("'", "")
+        cleaned = result.strip().replace('"', "").replace("'", "")
         # Basic validation
         if "Action-oriented" in cleaned:
-             return "Action-oriented"
+            return "Action-oriented"
         if "Ruminative" in cleaned:
-             return "Ruminative"
+            return "Ruminative"
         return cleaned
 
     def analyze_thought_type(self, thought_content: str) -> str:
         prompt = THOUGHT_TYPE_PROMPT.format(thought_content=thought_content)
         result = self.llm.generate_content(prompt)
-        cleaned = result.strip().replace('"', '').replace("'", "")
+        cleaned = result.strip().replace('"', "").replace("'", "")
         if "Automatic" in cleaned:
-             return "Automatic"
+            return "Automatic"
         if "Deliberate" in cleaned:
-             return "Deliberate"
+            return "Deliberate"
         return cleaned
 
     def generate_essay_draft_and_tags(
-        self, 
-        starting_text: str, 
-        persona_details: str, 
-        thought_type: str, 
-        action_orientation: str
+        self,
+        starting_text: str,
+        persona_details: str,
+        thought_type: str,
+        action_orientation: str,
     ) -> Dict[str, Any]:
         prompt = ESSAY_DRAFT_AND_TAG_PROMPT.format(
             starting_text=starting_text,
             persona_details=persona_details,
             thought_type=thought_type,
-            action_orientation=action_orientation
+            action_orientation=action_orientation,
         )
         result = self.llm.generate_content(prompt)
-        
+
         try:
             # Clean up potential markdown blocks
             result_clean = result.strip()
             match = re.search(r"```(?:\w+)?\s*(.*?)```", result_clean, re.DOTALL)
             if match:
                 result_clean = match.group(1).strip()
-            
+
             parsed_result = json.loads(result_clean)
             if isinstance(parsed_result, dict) and "essay" in parsed_result:
                 return parsed_result
         except json.JSONDecodeError:
             print(f"Error parsing essay draft JSON: {result}")
-        
+
         # Fallback if parsing fails but returns text
-        return {
-            "essay": result,
-            "tags": []
-        }
+        return {"essay": result, "tags": []}
 
     def modify_essay(self, essay_content: str, emotions: List[str]) -> str:
         if not emotions:
             return essay_content
-            
+
         prompt = ESSAY_MODIFICATION_PROMPT.format(
-            essay_content=essay_content,
-            emotions=", ".join(emotions)
+            essay_content=essay_content, emotions=", ".join(emotions)
         )
         return self.llm.generate_content(prompt)
 
-    def extract_emotions_from_profile(self, starting_text: str, profile: Dict[str, Any]) -> List[str]:
+    def extract_emotions_from_profile(
+        self, starting_text: str, profile: Dict[str, Any]
+    ) -> List[str]:
         prompt = PROFILE_EMOTION_EXTRACTION_PROMPT.format(
-            starting_text=starting_text,
-            profile_json=json.dumps(profile, indent=2)
+            starting_text=starting_text, profile_json=json.dumps(profile, indent=2)
         )
         result = self.llm.generate_content(prompt)
         return self._parse_list_output(result)
 
     def complete_essay_with_profile(
-        self, 
-        starting_text: str, 
-        persona_details: str, 
-        emotions: List[str]
+        self, starting_text: str, persona_details: str, emotions: List[str]
     ) -> str:
         prompt = ESSAY_COMPLETION_FROM_PROFILE_PROMPT.format(
             starting_text=starting_text,
             persona_details=persona_details,
-            emotions=", ".join(emotions) if emotions else "None"
+            emotions=", ".join(emotions) if emotions else "None",
         )
         return self.llm.generate_content(prompt)
 
@@ -155,24 +165,26 @@ class ProcessorService:
         persona_profile: Dict[str, Any],
         conversation_context: str,
         recent_messages: List[Dict[str, str]],
-        other_personas_info: str
+        other_personas_info: str,
     ) -> List[str]:
         formatted_messages = ""
         for msg in recent_messages:
             formatted_messages += f"{msg['persona']}: {msg['content']}\n"
-        
+
         prompt = CONVERSATION_MESSAGE_GENERATION_PROMPT.format(
             persona_name=persona_name,
             persona_age=persona_age,
             persona_gender=persona_gender,
-            persona_profile=json.dumps(persona_profile, indent=2) if persona_profile else "None",
+            persona_profile=json.dumps(persona_profile, indent=2)
+            if persona_profile
+            else "None",
             conversation_context=conversation_context,
             recent_messages=formatted_messages,
-            other_personas_info=other_personas_info
+            other_personas_info=other_personas_info,
         )
         print(f"Generated conversation message prompt: {prompt}")
         raw_output = self.llm.generate_content(prompt)
-        
+
         # Parse the structured JSON response
         try:
             cleaned = raw_output.strip()
@@ -180,7 +192,7 @@ class ProcessorService:
             match = re.search(r"```(?:\w+)?\s*(.*?)```", cleaned, re.DOTALL)
             if match:
                 cleaned = match.group(1).strip()
-            
+
             parsed = json.loads(cleaned)
             if isinstance(parsed, dict) and "messages" in parsed:
                 messages = [m["content"] for m in parsed["messages"] if "content" in m]
@@ -188,7 +200,48 @@ class ProcessorService:
                     return messages
         except (json.JSONDecodeError, KeyError, TypeError) as e:
             print(f"Error parsing multi-message response: {e}. Raw: {raw_output}")
-        
+
         # Fallback: return raw output as a single message
         return [raw_output.strip()]
 
+    def generate_thoughts_from_character_dialogue(
+        self, dialogues: List[str]
+    ) -> List[str]:
+        prompt = THOUGHT_GENERATION_FROM_DIALOGUE_PROMPT.format(
+            dialogues_text="\n".join([f"- {d}" for d in dialogues])
+        )
+        result = self.llm.generate_content(prompt)
+        return self._parse_list_output(result)
+
+    def synthesize_persona_from_thoughts(self, thoughts: List[str]) -> Dict[str, Any]:
+        prompt = PERSONA_SYNTHESIS_FROM_THOUGHTS_PROMPT.format(
+            thoughts_list="\n".join([f"- {t}" for t in thoughts])
+        )
+        result = self.llm.generate_content(prompt)
+
+        try:
+            cleaned = result.strip()
+            # Strip markdown code fences if present
+            match = re.search(r"```(?:\w+)?\s*(.*?)```", cleaned, re.DOTALL)
+            if match:
+                cleaned = match.group(1).strip()
+
+            parsed = json.loads(cleaned)
+            if isinstance(parsed, dict) and "name" in parsed:
+                return parsed
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            print(
+                f"Error parsing synthesized persona. Defaulting. Error: {e}. Raw: {result}"
+            )
+
+        return {
+            "name": "Unknown Entity",
+            "age": 30,
+            "gender": "Unknown",
+            "profile": {
+                "background": "An enigmatic personality that could not be fully analyzed.",
+                "core_beliefs": "Everything is unpredictable.",
+                "fears": "Loss of identity.",
+                "desires": "To be understood.",
+            },
+        }

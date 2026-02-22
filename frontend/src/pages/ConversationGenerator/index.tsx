@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Typography, Paper, Button, Chip, CircularProgress } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
-import { jsPDF } from 'jspdf';
+import { generateConversationPdf } from '../../utils/pdfGenerator';
 import ConversationList from './components/ConversationList';
 import CreateConversationModal from './components/CreateConversationModal';
 import AddPersonaModal from './components/AddPersonaModal';
@@ -104,72 +104,7 @@ const ConversationGenerator: React.FC = () => {
 
   const handleDownloadPdf = () => {
     if (!selectedConversation) return;
-
-    const doc = new jsPDF();
-    const margin = 15;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const maxWidth = pageWidth - margin * 2;
-    let yPosition = margin;
-
-    // Title
-    doc.setFontSize(20);
-    doc.setFont("helvetica", "bold");
-    const titleLines = doc.splitTextToSize(selectedConversation.title, maxWidth);
-    doc.text(titleLines, margin, yPosition);
-    yPosition += titleLines.length * 10;
-
-    // Context
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(100);
-    const contextLines = doc.splitTextToSize(selectedConversation.context, maxWidth);
-    doc.text(contextLines, margin, yPosition);
-    yPosition += contextLines.length * 8 + 10;
-
-    // Date
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    const dateStr = `Exported on: ${new Date().toLocaleString()}`;
-    doc.text(dateStr, margin, yPosition);
-    yPosition += 15;
-
-    doc.setTextColor(0);
-
-    // Messages
-    const messages = [...selectedConversation.messages].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-
-    for (const msg of messages) {
-        // Persona Name and Timestamp
-        doc.setFontSize(11);
-        doc.setFont("helvetica", "bold");
-        const headerText = `${msg.persona?.name || 'Unknown'} - ${new Date(msg.created_at).toLocaleString()}`;
-        
-        // Check page break
-        if (yPosition + 10 > doc.internal.pageSize.getHeight() - margin) {
-            doc.addPage();
-            yPosition = margin;
-        }
-        
-        doc.text(headerText, margin, yPosition);
-        yPosition += 6;
-
-        // Content
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        const contentLines = doc.splitTextToSize(msg.content, maxWidth);
-        
-        for (const line of contentLines) {
-             if (yPosition + 7 > doc.internal.pageSize.getHeight() - margin) {
-                doc.addPage();
-                yPosition = margin;
-            }
-            doc.text(line, margin, yPosition);
-            yPosition += 6;
-        }
-        yPosition += 8; // Space between messages
-    }
-
-    doc.save(`${selectedConversation.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`);
+    generateConversationPdf(selectedConversation);
   };
 
   return (

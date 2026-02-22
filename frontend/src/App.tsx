@@ -8,6 +8,7 @@ import ThoughtGenerator from './pages/ThoughtGenerator';
 import EssayGenerator from './pages/EssayGenerator';
 import ConversationGenerator from './pages/ConversationGenerator';
 import CreateThoughtModal from './pages/Thoughts/components/CreateThoughtModal';
+import MovieCharacterSearch from './pages/MovieCharacterSearch';
 
 function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,6 +27,7 @@ function App() {
           <Route path="/generate" element={<ThoughtGenerator />} />
           <Route path="/essay" element={<EssayGenerator />} />
           <Route path="/conversation-generator" element={<ConversationGenerator />} />
+          <Route path="/character-search" element={<MovieCharacterSearch />} />
         </Routes>
       </Layout>
 
