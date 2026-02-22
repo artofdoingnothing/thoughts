@@ -6,7 +6,7 @@ id: STORY-106
 title: Delete Persona Action UI
 type: feature
 priority: high
-status: open
+status: done
 created_by: product-owner-agent
 created_at: 2026-02-22T19:22:54Z
 assignee: unassigned
@@ -45,10 +45,10 @@ A user needs a UI interaction to permanently delete a persona. Because this acti
 
 ## Definition of Done
 
-- [ ] All acceptance criteria are verified by a stakeholder or QA.
-- [ ] The feature behaves consistently across affected platform parts.
-- [ ] Relevant documentation or user-facing content is updated.
-- [ ] Ticket status updated to `done`.
+- [x] All acceptance criteria are verified by a stakeholder or QA.
+- [x] The feature behaves consistently across affected platform parts.
+- [x] Relevant documentation or user-facing content is updated.
+- [x] Ticket status updated to `done`.
 
 ---
 
@@ -56,7 +56,7 @@ id: STORY-107
 title: Display Persona Source Type
 type: feature
 priority: medium
-status: open
+status: done
 created_by: product-owner-agent
 created_at: 2026-02-22T19:22:54Z
 assignee: unassigned
@@ -94,10 +94,10 @@ The system tracks the provenance of Personas. The UI needs to visually different
 
 ## Definition of Done
 
-- [ ] All acceptance criteria are verified by a stakeholder or QA.
-- [ ] The feature behaves consistently across affected platform parts.
-- [ ] Relevant documentation or user-facing content is updated.
-- [ ] Ticket status updated to `done`.
+- [x] All acceptance criteria are verified by a stakeholder or QA.
+- [x] The feature behaves consistently across affected platform parts.
+- [x] Relevant documentation or user-facing content is updated.
+- [x] Ticket status updated to `done`.
 
 ---
 
@@ -105,7 +105,7 @@ id: STORY-109
 title: Modal to Add Characters to Generated Persona
 type: feature
 priority: high
-status: open
+status: done
 created_by: product-owner-agent
 created_at: 2026-02-22T19:22:54Z
 assignee: unassigned
@@ -145,7 +145,7 @@ Users need the ability to edit an existing movie-generated persona. The interact
 
 ## Definition of Done
 
-- [ ] All acceptance criteria are verified by a stakeholder or QA.
-- [ ] The feature behaves consistently across affected platform parts.
-- [ ] Relevant documentation or user-facing content is updated.
-- [ ] Ticket status updated to `done`.
+- [x] All acceptance criteria are verified by a stakeholder or QA.
+- [x] The feature behaves consistently across affected platform parts.
+- [x] Relevant documentation or user-facing content is updated.
+- [x] Ticket status updated to `done`.

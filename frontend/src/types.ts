@@ -28,6 +28,7 @@ export interface Persona {
         action_orientation?: string;
     };
     additional_info?: Record<string, any>;
+    source: 'manual' | 'derived' | 'movie_generated' | string;
 }
 
 export interface Thought {

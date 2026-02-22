@@ -1,14 +1,16 @@
 import {
     Paper, Typography, Box, Chip, Stack,
-    Table, TableBody, TableCell, TableContainer, TableRow
+    Table, TableBody, TableCell, TableContainer, TableRow, Button
 } from '@mui/material';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import type { Persona } from '../../../types';
 
 interface PersonaDetailsProps {
     persona: Persona | null;
+    onAddCharacters?: (persona: Persona) => void;
 }
 
-export default function PersonaDetails({ persona }: PersonaDetailsProps) {
+export default function PersonaDetails({ persona, onAddCharacters }: PersonaDetailsProps) {
     if (!persona) {
         return (
             <Paper elevation={3} sx={{ height: '100%', p: 3, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -19,11 +21,32 @@ export default function PersonaDetails({ persona }: PersonaDetailsProps) {
 
     return (
         <Paper elevation={3} sx={{ height: '100%', p: 3, overflowY: 'auto' }}>
-            <Typography variant="h4" gutterBottom>{persona.name}</Typography>
-            <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
-                <Chip label={`Age: ${persona.age}`} />
-                <Chip label={`Gender: ${persona.gender}`} />
-            </Stack>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <Box>
+                    <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        {persona.name}
+                        <Chip 
+                            label={persona.source === 'movie_generated' ? 'Movie Generated' : persona.source === 'derived' ? 'Derived' : 'Manual'} 
+                            color={persona.source === 'movie_generated' ? 'secondary' : persona.source === 'derived' ? 'info' : 'default'}
+                            size="small"
+                        />
+                    </Typography>
+                    <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+                        <Chip label={`Age: ${persona.age}`} />
+                        <Chip label={`Gender: ${persona.gender}`} />
+                    </Stack>
+                </Box>
+                {persona.source === 'movie_generated' && onAddCharacters && (
+                    <Button 
+                        startIcon={<GroupAddIcon />} 
+                        variant="outlined" 
+                        color="secondary"
+                        onClick={() => onAddCharacters(persona)}
+                    >
+                        Add Characters
+                    </Button>
+                )}
+            </Box>
 
             {persona.additional_info && Object.keys(persona.additional_info).length > 0 && (
                 <Box sx={{ mb: 4 }}>

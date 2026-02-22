@@ -73,3 +73,25 @@ export function useGeneratePersonaFromMovieCharacters() {
         // Invalidate may not be needed immediately if it's a background task, but good practice
     });
 }
+
+export function useEnrichPersonaFromMovieCharacters() {
+    return useMutation({
+        mutationFn: async ({ personaId, characterIds }: { personaId: number; characterIds: string[] }) => {
+            const { data } = await api.post(`/personas/${personaId}/enrich-from-movie-characters`, { character_ids: characterIds });
+            return data;
+        },
+    });
+}
+
+export function useDeletePersona() {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (id: number) => {
+            const { data } = await api.delete(`/personas/${id}`);
+            return data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['personas'] });
+        },
+    });
+}
