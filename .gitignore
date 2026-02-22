@@ -32,3 +32,6 @@ coverage.xml
 htmlcov/
 coverage/
 coverage_*.txt
+
+# Data Backups
+data_backups/

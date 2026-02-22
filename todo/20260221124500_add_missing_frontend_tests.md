@@ -1,12 +1,18 @@
-# Missing Frontend Test Cases (COMPLETE)
+# Missing Frontend Test Cases
+
+**Status:** COMPLETED
+
+## Context / Current State
 
 The following files have low test coverage and require basic unit test cases. Edge cases are not required.
 
-## Core Application (COMPLETE)
+## Action Items
+
+### Core Application
 
 - [x] `src/App.tsx`
 
-## Pages (COMPLETE)
+### Pages
 
 - [x] `src/pages/ConversationGenerator/index.tsx`
 - [x] `src/pages/EssayGenerator/index.tsx`
@@ -14,7 +20,7 @@ The following files have low test coverage and require basic unit test cases. Ed
 - [x] `src/pages/ThoughtGenerator/index.tsx`
 - [x] `src/pages/Thoughts/index.tsx`
 
-## Components (COMPLETE)
+### Components
 
 - [x] `src/pages/ConversationGenerator/components/AddPersonaModal.tsx`
 - [x] `src/pages/ConversationGenerator/components/ConversationList.tsx`
@@ -27,3 +33,7 @@ The following files have low test coverage and require basic unit test cases. Ed
 - [x] `src/pages/Thoughts/components/AddThoughtModal.tsx`
 - [x] `src/pages/Thoughts/components/FilterBar.tsx`
 - [x] `src/pages/Thoughts/components/ThoughtTable.tsx`
+
+## Additional Notes
+
+N/A

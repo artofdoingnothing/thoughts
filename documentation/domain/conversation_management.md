@@ -60,7 +60,3 @@ The persona's `age` directly influences message structure:
 | Young Adults (20-35) | 1-3          | Casual but more complete sentences, occasional slang      |
 | Middle-Aged (36-55)  | 1-2          | Composed, full sentences with moderate vocabulary         |
 | Older Adults (56+)   | 1 (rarely 2) | Proper grammar, warm/considered tone, full sentences      |
-
-## Architectural Anomalies (DDD Violations)
-
-- Currently, logic for Conversation handling (including the final consolidation of Messages into Thoughts) is tangled within `libs/db_service/service.py` (`ThoughtService`) rather than an independent `ConversationService` or `ConversationRepository`.

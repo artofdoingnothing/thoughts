@@ -50,6 +50,6 @@ These are standalone entities that can be linked to many thoughts, effectively a
 - **Consumes from**: AI Processing domain (which analyzes and generates Thoughts).
 - **Serves**: Conversation Management (Thoughts form the context and memory from which personas converse).
 
-## Architectural Anomalies (DDD Violations)
+## Architecture Status
 
-- Currently, logic for Thought handling is tightly coupled with `libs/db_service/service.py` along with all other domain entities rather than a dedicated `ThoughtRepository`.
+Logic for Thought handling has been successfully decoupled from the previous monolithic setup. It is now handled by dedicated services (e.g., `ThoughtService`, `ThoughtUseCases`) ensuring a proper separation of concerns within the Thought Management domain.

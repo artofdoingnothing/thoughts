@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Typography, Paper, Button, Chip, CircularProgress } from '@mui/material';
+import PrintIcon from '@mui/icons-material/Print';
 import { jsPDF } from 'jspdf';
 import ConversationList from './components/ConversationList';
 import CreateConversationModal from './components/CreateConversationModal';
@@ -205,8 +206,15 @@ const ConversationGenerator: React.FC = () => {
                 ))}
                 <Button size="small" onClick={() => setIsAddPersonaModalOpen(true)}>+ Add</Button>
                 <Box sx={{ flexGrow: 1 }} />
-                <Button variant="outlined" color="primary" size="small" onClick={handleDownloadPdf}>
-                    Download PDF
+                <Button 
+                    variant="contained" 
+                    color="primary" 
+                    size="small" 
+                    onClick={handleDownloadPdf}
+                    startIcon={<PrintIcon />}
+                    sx={{ ml: 2, mr: 1 }}
+                >
+                    Print / Download PDF
                 </Button>
                 <Button variant="outlined" color="error" size="small" onClick={handleEndConversation}>
                     End Conversation

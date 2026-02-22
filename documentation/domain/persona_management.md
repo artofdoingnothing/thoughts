@@ -29,7 +29,3 @@ The central entity for an identity.
 - **Interacts heavily with**: Thought Management (Thoughts form the basis of a Persona's profile).
 - **Consumes from**: AI Processing domain (for generating profiles and deriving new personas).
 - **Serves**: Conversation Management (Personas are the participants in conversations).
-
-## Architectural Anomalies (DDD Violations)
-
-- Currently, logic for Persona handling (including complex LLM-driven profile regeneration and derivation) is mixed within `libs/db_service/service.py` (`ThoughtService`) rather than being isolated in a dedicated `PersonaService` or `PersonaRepository`.

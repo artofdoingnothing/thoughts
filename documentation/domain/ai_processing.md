@@ -35,13 +35,9 @@ Infrastructure-level mechanism (Redis Queue) to perform AI Processing tasks asyn
   - `parse_blog_and_generate_thoughts`
   - `generate_essay`
   - `generate_conversation_message`
-- _Note_: These tasks typically invoke the `ProcessorService` and then update the main database via `ThoughtService`.
+- _Note_: These tasks typically invoke the `ProcessorService` and then update via Application Use Cases (e.g., `ThoughtUseCases`).
 
 ## Domain Boundaries
 
 - **Interacts with**: All other domains (Thought, Persona, Conversation). It acts as an upstream service providing reasoning and generation capabilities.
 - **Architectural characteristic**: Mostly stateless infrastructure and application services. It does not own persistent domain entities of its own but rather operates on DTOs and outputs data to be persisted by other domains.
-
-## Architectural Anomalies (DDD Violations)
-
-- `workers/tasks.py` directly references and uses `ThoughtService` from `libs.db_service`. In a strict DDD architecture, background workers should ideally publish domain events or interact via dedicated Use Case handlers rather than calling another domain's database service directly.
