@@ -154,3 +154,39 @@ def generate_persona_from_movie_characters(character_ids: list):
         q_action.enqueue("workers.tasks.analyze_action_orientation", thought.id)
         q_type.enqueue("workers.tasks.analyze_thought_type", thought.id)
         q_topics.enqueue("workers.tasks.analyze_topics", thought.id)
+    
+    # STORY-103: Regenerate profile after thoughts are saved
+    from libs.db_service import PersonaService
+    PersonaService.regenerate_persona(persona_id)
+    print(f"Regenerated profile for persona {persona_id}")
+
+
+def enrich_persona_from_movie_characters(persona_id: int, character_ids: list):
+    print(f"STARTING: Enriching persona {persona_id} with character IDs: {character_ids}")
+
+    result = generation_uc.enrich_persona_from_movie_characters(persona_id, character_ids)
+    thoughts = result["thoughts"]
+    print(f"Generated {len(thoughts)} new thoughts for persona {persona_id}.")
+
+    q_distortions = Queue("distortions", connection=redis_conn)
+    q_sentiment = Queue("sentiment", connection=redis_conn)
+    q_action = Queue("action_orientation", connection=redis_conn)
+    q_type = Queue("thought_type", connection=redis_conn)
+    q_topics = Queue("topics", connection=redis_conn)
+
+    for content in thoughts:
+        thought = thought_uc.create_thought(
+            content=content, is_generated=True, persona_id=persona_id
+        )
+        print(f"Created thought {thought.id} for enrichment of persona {persona_id}")
+
+        q_distortions.enqueue("workers.tasks.analyze_cognitive_distortions", thought.id)
+        q_sentiment.enqueue("workers.tasks.analyze_sentiment", thought.id)
+        q_action.enqueue("workers.tasks.analyze_action_orientation", thought.id)
+        q_type.enqueue("workers.tasks.analyze_thought_type", thought.id)
+        q_topics.enqueue("workers.tasks.analyze_topics", thought.id)
+
+    # STORY-104: Regenerate profile after enrichment thoughts are saved
+    from libs.db_service import PersonaService
+    PersonaService.regenerate_persona(persona_id)
+    print(f"Regenerated profile for persona {persona_id} after enrichment")

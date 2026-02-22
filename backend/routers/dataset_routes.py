@@ -20,10 +20,11 @@ def search_characters(
     genre: Optional[str] = Query(None, description="Movie genre filter"),
     min_rating: Optional[float] = Query(None, description="Minimum IMDB rating filter"),
     year: Optional[str] = Query(None, description="Release year filter"),
+    character_name: Optional[str] = Query(None, description="Wildcard search on character name"),
 ):
     """
     Search for movie characters by movie details.
     """
     return dataset_use_cases.search_movie_characters(
-        title_query=title, genre=genre, min_imdb_rating=min_rating, release_year=year
+        title_query=title, genre=genre, min_imdb_rating=min_rating, release_year=year, character_name=character_name
     )

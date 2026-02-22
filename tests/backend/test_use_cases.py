@@ -129,7 +129,41 @@ def test_generate_persona_from_movie_characters(
     assert len(result["thoughts"]) == 1
     assert result["thoughts"][0] == "Thought 1"
     
-    mock_movie_service.get_character_dialogues.assert_called_once_with("char1", limit=100)
-    mock_processor.generate_thoughts_from_character_dialogue.assert_called_once()
+    mock_movie_service.get_character_dialogues.assert_called_once_with("char1", limit=500)
+    mock_processor.generate_thoughts_from_character_dialogue.assert_called_once_with([["Hello World"]][0], count=50)
     mock_processor.synthesize_persona_from_thoughts.assert_called_once_with(["Thought 1"])
-    mock_persona_service.create_persona.assert_called_once()
+    mock_persona_service.create_persona.assert_called_once_with(
+        name="Derived Persona",
+        age=25,
+        gender="Female",
+        profile={"background": "Test"},
+        source="movie_generated"
+    )
+
+@patch("libs.dataset_service.movie_dataset_service.MovieDatasetService")
+@patch("libs.use_cases.generation_use_cases.ProcessorService")
+@patch("libs.use_cases.generation_use_cases.PersonaService")
+def test_enrich_persona_from_movie_characters(mock_persona_service, mock_processor_class, mock_movie_service_class):
+    # Mock movie service
+    mock_movie_service = MagicMock()
+    mock_movie_service.get_character_dialogues.return_value = [["New", "trait"]]
+    mock_movie_service_class.return_value = mock_movie_service
+    
+    # Mock processor
+    mock_processor = MagicMock()
+    mock_processor.generate_thoughts_from_character_dialogue.return_value = ["New Thought"]
+    mock_processor_class.return_value = mock_processor
+    
+    # Mock PersonaService
+    mock_persona = MagicMock()
+    mock_persona.id = 1
+    mock_persona_service.get_persona.return_value = mock_persona
+    
+    # Execute
+    uc = GenerationUseCases()
+    result = uc.enrich_persona_from_movie_characters(1, ["char2"])
+    
+    assert result["persona_id"] == 1
+    assert result["thoughts"] == ["New Thought"]
+    mock_movie_service.get_character_dialogues.assert_called_once_with("char2", limit=500)
+    mock_processor.generate_thoughts_from_character_dialogue.assert_called_once_with(["New trait"], count=50)

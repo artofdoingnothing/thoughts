@@ -21,6 +21,7 @@ class PersonaDomain(PydanticBaseModel):
     gender: str
     profile: Optional[Dict[str, Any]] = None
     additional_info: Optional[Dict[str, Any]] = None
+    source: str = "manual"
 
     class Config:
         from_attributes = True

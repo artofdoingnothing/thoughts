@@ -246,7 +246,7 @@ Output format:
 THOUGHT_GENERATION_FROM_DIALOGUE_PROMPT = """
 You are an AI psychologist.
 Analyze the following snippets of dialogue spoken by a specific movie character.
-Extract exactly 5 distinct inner thoughts or reflections that this character might have based on these dialogues.
+Extract exactly {count} distinct inner thoughts or reflections that this character might have based on these dialogues.
 A "thought" is a specific idea, opinion, or reflection reflecting their personality.
 
 Constraints:
@@ -257,7 +257,7 @@ Constraints:
 Character Dialogues:
 {dialogues_text}
 
-Output format: ["Thought 1...", "Thought 2...", "Thought 3...", "Thought 4...", "Thought 5..."]
+Output format: ["Thought 1...", "Thought 2...", "..."]
 """
 
 PERSONA_SYNTHESIS_FROM_THOUGHTS_PROMPT = """

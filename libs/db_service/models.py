@@ -29,8 +29,10 @@ class Persona(Base):
     gender = Column(String)
     profile = Column(JSON, nullable=True)
     additional_info = Column(JSON, nullable=True)
+    source = Column(String, default="manual") # manual, derived, movie_generated
     
     thoughts = relationship("Thought", back_populates="persona", cascade="all, delete-orphan")
+    messages = relationship("Message", back_populates="persona", cascade="all, delete-orphan")
     conversations = relationship("Conversation", secondary=conversation_persona, back_populates="personas")
 
 class Thought(Base):
@@ -147,7 +149,7 @@ class Message(Base):
     persona_id = Column(Integer, ForeignKey("persona.id"))
     
     conversation = relationship("Conversation", back_populates="messages")
-    persona = relationship("Persona")
+    persona = relationship("Persona", back_populates="messages")
 
 def init_db():
     Base.metadata.create_all(bind=engine)

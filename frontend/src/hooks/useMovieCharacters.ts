@@ -7,6 +7,7 @@ interface SearchMovieCharactersParams {
     genre?: string;
     min_rating?: number;
     year?: string;
+    character_name?: string;
 }
 
 export function useMovieCharacters(params: SearchMovieCharactersParams) {

@@ -32,6 +32,16 @@ This project provides a suite of tools for thought analysis and generation:
 - [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) installed on your machine.
 - A [Google Gemini API Key](https://ai.google.dev/) for AI functionalities.
 
+### Local Dataset Requirements
+
+If you are running the application using Docker, the required Cornell Movie-Dialogs Corpus dataset is automatically downloaded into the `/app/data/cornell_dialogs` directory within the containers during the build process.
+
+If you are running the application natively without Docker, you must manually download the dataset:
+
+1. Download the dataset from: `http://www.cs.cornell.edu/~cristian/data/cornell_movie_dialogs_corpus.zip`
+2. Extract the `.zip` file.
+3. Move the extracted files (e.g., `movie_lines.txt`, `movie_conversations.txt`) into `/app/data/cornell_dialogs` or the corresponding path expected by the backend service.
+
 ### Quick Start
 
 1.  **Clone the Repository**

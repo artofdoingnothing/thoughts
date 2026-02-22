@@ -1,38 +1,29 @@
-from unittest.mock import patch
-
+import os
+import tempfile
 from libs.dataset_service.movie_dataset_service import MovieDatasetService
 
-
 def test_search_characters_filtering():
-    service = MovieDatasetService()
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create mock dataset files
+        titles_content = (
+            "m0 +++$+++ 10 things i hate about you +++$+++ 1999 +++$+++ 6.90 +++$+++ 100 +++$+++ ['comedy']\n"
+            "m1 +++$+++ the matrix +++$+++ 1999 +++$+++ 8.70 +++$+++ 100 +++$+++ ['action', 'sci-fi']\n"
+        )
+        chars_content = (
+            "u0 +++$+++ BIANCA +++$+++ m0 +++$+++ 10 things i hate about you +++$+++ f +++$+++ 1\n"
+            "u1 +++$+++ CAMERON +++$+++ m0 +++$+++ 10 things i hate about you +++$+++ m +++$+++ 2\n"
+            "u2 +++$+++ NEO +++$+++ m1 +++$+++ the matrix +++$+++ m +++$+++ 1\n"
+            "u3 +++$+++ MORPHEUS +++$+++ m1 +++$+++ the matrix +++$+++ m +++$+++ 2\n"
+        )
+        
+        with open(os.path.join(temp_dir, "movie_titles_metadata.txt"), "w") as f:
+            f.write(titles_content)
+            
+        with open(os.path.join(temp_dir, "movie_characters_metadata.txt"), "w") as f:
+            f.write(chars_content)
+            
+        service = MovieDatasetService(data_dir=temp_dir)
 
-    # Create mock dataset
-    mock_data = [
-        {
-            "movieID": "m0",
-            "movieTitle": "10 things i hate about you",
-            "movieYear": "1999",
-            "movieIMDBRating": "6.90",
-            "movieGenres": ["comedy"],
-            "characterID1": "u0",
-            "characterName1": "BIANCA",
-            "characterID2": "u1",
-            "characterName2": "CAMERON",
-        },
-        {
-            "movieID": "m1",
-            "movieTitle": "the matrix",
-            "movieYear": "1999",
-            "movieIMDBRating": "8.70",
-            "movieGenres": ["action", "sci-fi"],
-            "characterID1": "u2",
-            "characterName1": "NEO",
-            "characterID2": "u3",
-            "characterName2": "MORPHEUS",
-        },
-    ]
-
-    with patch.object(service, "_get_stream", return_value=mock_data):
         # Apply filter
         results = service.search_characters(genre="sci-fi")
         assert len(results) == 2  # NEO and MORPHEUS
@@ -46,3 +37,13 @@ def test_search_characters_filtering():
         # Test exact year
         results = service.search_characters(release_year="1999")
         assert len(results) == 4  # Both movies
+
+        # Test partial character name match
+        results = service.search_characters(character_name="BIAN")
+        assert len(results) == 1
+        assert results[0]["character_name"] == "BIANCA"
+
+        # Test partial character name case-insensitive
+        results = service.search_characters(character_name="neo")
+        assert len(results) == 1
+        assert results[0]["character_name"] == "NEO"

@@ -87,24 +87,34 @@ class GenerationUseCases:
 
         movie_service = MovieDatasetService()
 
+        total_dialogues_limit = 500
+        total_thoughts_limit = 50
+        n = len(character_ids)
+        
         all_thoughts = []
-        for character_id in character_ids:
-            # 1. Extract 100 dialogues for EACH character
+        for i, character_id in enumerate(character_ids):
+            # Calculate limits for this character
+            limit_dialogues = total_dialogues_limit // n
+            limit_thoughts = total_thoughts_limit // n
+            if i == n - 1: # Add remainder to last character
+                limit_thoughts += total_thoughts_limit % n
+
+            # 1. Extract dialogues for this character
             dialogues_nested = movie_service.get_character_dialogues(
-                character_id, limit=100
+                character_id, limit=limit_dialogues
             )
 
             conversations = []
             for conversation in dialogues_nested:
                 conversations.append(" ".join(conversation))
 
-            if len(conversations) > 100:
-                conversations = random.sample(conversations, 100)
+            if len(conversations) > limit_dialogues:
+                conversations = random.sample(conversations, limit_dialogues)
 
             if conversations:
-                # 2. Invoke AI Processing to generate 5 thoughts for this character
+                # 2. Invoke AI Processing to generate thoughts for this character
                 thoughts = self.processor.generate_thoughts_from_character_dialogue(
-                    conversations
+                    conversations, count=limit_thoughts
                 )
                 all_thoughts.extend(thoughts)
 
@@ -122,7 +132,55 @@ class GenerationUseCases:
             age=persona_data.get("age", 30),
             gender=persona_data.get("gender", "Unknown"),
             profile=persona_data.get("profile", {}),
+            source="movie_generated"
         )
 
         # We return the data so a worker can enqueue the other analyzes
         return {"persona_id": new_persona.id, "thoughts": all_thoughts}
+
+    def enrich_persona_from_movie_characters(self, persona_id: int, character_ids: list[str]) -> dict:
+        from libs.dataset_service.movie_dataset_service import MovieDatasetService
+
+        persona = PersonaService.get_persona(persona_id)
+        if not persona:
+            raise ValueError(f"Persona with ID {persona_id} not found")
+
+        movie_service = MovieDatasetService()
+
+        total_dialogues_limit = 500
+        total_thoughts_limit = 50
+        n = len(character_ids)
+        
+        all_new_thoughts = []
+        for i, character_id in enumerate(character_ids):
+            limit_dialogues = total_dialogues_limit // n
+            limit_thoughts = total_thoughts_limit // n
+            if i == n - 1:
+                limit_thoughts += total_thoughts_limit % n
+
+            dialogues_nested = movie_service.get_character_dialogues(
+                character_id, limit=limit_dialogues
+            )
+
+            conversations = []
+            for conversation in dialogues_nested:
+                conversations.append(" ".join(conversation))
+
+            if conversations:
+                thoughts = self.processor.generate_thoughts_from_character_dialogue(
+                    conversations, count=limit_thoughts
+                )
+                all_new_thoughts.extend(thoughts)
+
+        if not all_new_thoughts:
+            raise ValueError("Failed to generate any new thoughts from selected characters")
+
+        # After generating and returning thoughts (which will be saved by worker), 
+        # the persona profile needs to be regenerated.
+        # However, the regeneration happens AFTER thoughts are saved to DB.
+        # But this use case returns the thoughts to the worker.
+        # So the worker should probably trigger the regeneration or this use case should do it after thoughts are saved?
+        # The worker currently saves thoughts. Let's let the worker handle it or update the persona here if we save them ourselves.
+        # Better: return the thoughts, and the worker will handle saving and triggering regeneration.
+        
+        return {"persona_id": persona.id, "thoughts": all_new_thoughts}

@@ -10,6 +10,7 @@ mock_persona = {
     "age": 30,
     "gender": "male",
     "additional_info": {},
+    "source": "manual",
     "created_at": "2023-01-01T00:00:00",
     "updated_at": "2023-01-01T00:00:00"
 }
@@ -56,3 +57,17 @@ def test_generate_persona_name():
     response = client.post("/personas/generate-name")
     assert response.status_code == 200
     assert "name" in response.json()
+
+def test_enrich_persona_from_movie_characters():
+    with patch("redis.Redis") as mock_redis:
+        with patch("rq.Queue") as mock_queue:
+            mock_q = MagicMock()
+            mock_queue.return_value = mock_q
+            mock_job = MagicMock()
+            mock_job.id = "test-job-id"
+            mock_q.enqueue.return_value = mock_job
+            
+            response = client.post("/personas/1/enrich-from-movie-characters", json={"character_ids": ["char1", "char2"]})
+            assert response.status_code == 202
+            assert response.json()["job_id"] == "test-job-id"
+            assert "Enrichment task started" in response.json()["message"]

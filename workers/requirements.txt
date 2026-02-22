@@ -11,3 +11,5 @@ ruff
 google-genai
 requests
 beautifulsoup4
+datasets<3.0.0
+pandas

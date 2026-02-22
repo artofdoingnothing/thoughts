@@ -36,13 +36,15 @@ const MovieCharacterSearch: React.FC = () => {
     const [genre, setGenre] = useState('');
     const [minRating, setMinRating] = useState('');
     const [year, setYear] = useState('');
+    const [charName, setCharName] = useState('');
 
     // Query parameters state
     const [queryParams, setQueryParams] = useState({
         title: '',
         genre: '',
         min_rating: undefined as number | undefined,
-        year: ''
+        year: '',
+        character_name: ''
     });
 
     // Selected characters state
@@ -56,7 +58,8 @@ const MovieCharacterSearch: React.FC = () => {
             title: titlePart,
             genre: genre,
             min_rating: minRating ? parseFloat(minRating) : undefined,
-            year: year
+            year: year,
+            character_name: charName
         });
     };
 
@@ -156,6 +159,17 @@ const MovieCharacterSearch: React.FC = () => {
                             Search Filters
                         </Typography>
                         <Grid container spacing={2} alignItems="center">
+                            <Grid size={{ xs: 12, sm: 12, md: 4 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Character Name"
+                                    variant="outlined"
+                                    size="small"
+                                    value={charName}
+                                    onChange={(e) => setCharName(e.target.value)}
+                                    placeholder="e.g. Neo"
+                                />
+                            </Grid>
                             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                                 <TextField
                                     fullWidth
@@ -167,7 +181,7 @@ const MovieCharacterSearch: React.FC = () => {
                                     placeholder="e.g. matrix"
                                 />
                             </Grid>
-                            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
                                 <TextField
                                     fullWidth
                                     label="Genre"
@@ -178,20 +192,19 @@ const MovieCharacterSearch: React.FC = () => {
                                     placeholder="e.g. action"
                                 />
                             </Grid>
-                            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+                            <Grid size={{ xs: 12, sm: 6, md: 1 }}>
                                 <TextField
                                     fullWidth
-                                    label="Min. Rating"
+                                    label="Rating"
                                     variant="outlined"
                                     size="small"
                                     type="number"
                                     inputProps={{ min: 0, max: 10, step: 0.1 }}
                                     value={minRating}
                                     onChange={(e) => setMinRating(e.target.value)}
-                                    placeholder="e.g. 7.5"
                                 />
                             </Grid>
-                            <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+                            <Grid size={{ xs: 12, sm: 6, md: 1 }}>
                                 <TextField
                                     fullWidth
                                     label="Year"
@@ -199,10 +212,9 @@ const MovieCharacterSearch: React.FC = () => {
                                     size="small"
                                     value={year}
                                     onChange={(e) => setYear(e.target.value)}
-                                    placeholder="e.g. 1999"
                                 />
                             </Grid>
-                            <Grid size={{ xs: 12, md: 2 }}>
+                            <Grid size={{ xs: 12, md: 1 }}>
                                 <Button
                                     fullWidth
                                     variant="contained"
@@ -210,7 +222,7 @@ const MovieCharacterSearch: React.FC = () => {
                                     startIcon={<SearchIcon />}
                                     sx={{ height: '40px' }}
                                 >
-                                    Search
+                                    Go
                                 </Button>
                             </Grid>
                         </Grid>

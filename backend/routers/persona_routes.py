@@ -123,3 +123,29 @@ def generate_from_movie_characters(request: GenerateFromMovieCharactersRequest):
     )
 
     return {"message": "Generation task started", "job_id": job.id}
+
+
+@router.post("/{persona_id}/enrich-from-movie-characters", status_code=202)
+def enrich_persona_from_movie_characters(
+    persona_id: int, request: GenerateFromMovieCharactersRequest
+):
+    if not request.character_ids:
+        raise HTTPException(
+            status_code=400, detail="Must provide at least one character ID"
+        )
+
+    import os
+    from redis import Redis
+    from rq import Queue
+
+    redis_conn = Redis(
+        host=os.getenv("REDIS_HOST", "localhost"), port=os.getenv("REDIS_PORT", "6379")
+    )
+    q = Queue("generation", connection=redis_conn)
+    job = q.enqueue(
+        "workers.tasks.enrich_persona_from_movie_characters",
+        persona_id,
+        request.character_ids,
+    )
+
+    return {"message": "Enrichment task started", "job_id": job.id}

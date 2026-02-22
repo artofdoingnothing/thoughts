@@ -49,5 +49,5 @@ def test_search_characters(mock_search):
     assert data["results"][0]["character_name"] == "BIANCA"
 
     mock_search.assert_called_once_with(
-        title_query="things", genre="comedy", min_imdb_rating=None, release_year=None
+        title_query="things", genre="comedy", min_imdb_rating=None, release_year=None, character_name=None
     )

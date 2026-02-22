@@ -5,7 +5,7 @@ from libs.db_service.service import ThoughtService
 from libs.db_service.models import Conversation, Persona, Thought
 from datetime import datetime
 
-p = Persona(id=1, name="Test Persona", age=30, gender="male")
+p = Persona(id=1, name="Test Persona", age=30, gender="male", source="manual")
 p.created_at = datetime.utcnow()
 p.updated_at = datetime.utcnow()
 p.profile = {}

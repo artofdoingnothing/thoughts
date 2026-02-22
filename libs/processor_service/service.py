@@ -205,10 +205,11 @@ class ProcessorService:
         return [raw_output.strip()]
 
     def generate_thoughts_from_character_dialogue(
-        self, dialogues: List[str]
+        self, dialogues: List[str], count: int = 5
     ) -> List[str]:
         prompt = THOUGHT_GENERATION_FROM_DIALOGUE_PROMPT.format(
-            dialogues_text="\n".join([f"- {d}" for d in dialogues])
+            dialogues_text="\n".join([f"- {d}" for d in dialogues]),
+            count=count
         )
         result = self.llm.generate_content(prompt)
         return self._parse_list_output(result)
