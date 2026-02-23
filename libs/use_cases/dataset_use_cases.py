@@ -27,3 +27,9 @@ class DatasetUseCases:
         return MovieSearchResponse(
             results=[MovieCharacterResponse(**res) for res in results]
         )
+
+    def get_random_movie_characters(self, limit: int = 50, seed: Optional[float] = None) -> MovieSearchResponse:
+        results = self.movie_service.get_random_characters(limit=limit, seed=seed)
+        return MovieSearchResponse(
+            results=[MovieCharacterResponse(**res) for res in results]
+        )

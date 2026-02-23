@@ -161,38 +161,57 @@ export const generateConversationPdf = (conversation: Conversation) => {
 
   yPosition += 8;
 
-  // Participant Legend
+  // Participant Details
   const personaColors = new Map<number, string>();
   if (conversation.personas && conversation.personas.length > 0) {
-    let currentX = margins.left;
     const dotRadius = 1.4;
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
+    
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor('#1A1A1A');
+    doc.text('Participants & Background', margins.left, yPosition);
+    yPosition += 6;
 
     conversation.personas.forEach((p, i) => {
       const color = LEGEND_COLORS[i % LEGEND_COLORS.length];
       personaColors.set(p.id, color);
 
-      const text = p.name;
-      const textWidth = doc.getTextWidth(text);
-      const itemWidth = (dotRadius * 2) + 2 + textWidth + 8;
-
-      if (currentX + itemWidth - 8 > pageWidth - margins.right) {
-        currentX = margins.left;
-        yPosition += 6;
+      // Check for page break
+      if (yPosition + 15 > doc.internal.pageSize.getHeight() - margins.bottom) {
+        doc.addPage();
+        yPosition = margins.top;
       }
 
+      // Name and Indicator
       doc.setFillColor(color);
-      doc.circle(currentX + dotRadius, yPosition - 1, dotRadius, 'F');
+      doc.circle(margins.left + dotRadius, yPosition - 1, dotRadius, 'F');
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor('#333333');
+      doc.text(p.name, margins.left + (dotRadius * 2) + 2, yPosition);
+      
+      // Origin info if movie generated
+      if (p.origin_description) {
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor('#777777');
+        doc.text(`Origin: ${p.origin_description}`, margins.left + (dotRadius * 2) + 2 + doc.getTextWidth(p.name) + 4, yPosition);
+      }
+      yPosition += 4.5;
 
-      doc.setTextColor('#444444');
-      doc.text(text, currentX + (dotRadius * 2) + 2, yPosition);
-
-      currentX += itemWidth;
+      // Summary
+      const summary = p.profile?.thought_patterns || 'No summary available.';
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor('#555555');
+      const summaryLines = doc.splitTextToSize(summary, maxWidth - 6);
+      doc.text(summaryLines, margins.left + 6, yPosition);
+      
+      yPosition += summaryLines.length * 4 + 4;
     });
 
-    yPosition += 10;
+    yPosition += 4;
   }
 
   // Messages

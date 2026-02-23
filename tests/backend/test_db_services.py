@@ -65,7 +65,7 @@ def test_create_persona(mock_session_local, mock_persona_cls):
     mock_session_local.return_value.__enter__.return_value = mock_session
     mock_persona_cls.return_value = mock_persona_db
     
-    PersonaService.create_persona(name="Test", age=25, gender="female")
+    PersonaService.create_persona(name="Test", age=25, gender="female", origin_description="Character from Movie(2024)(8.5)")
     assert mock_session.commit.called
     assert mock_session.add.called
 

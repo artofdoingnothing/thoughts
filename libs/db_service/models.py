@@ -30,6 +30,7 @@ class Persona(Base):
     profile = Column(JSON, nullable=True)
     additional_info = Column(JSON, nullable=True)
     source = Column(String, default="manual") # manual, derived, movie_generated
+    origin_description = Column(String, nullable=True) # character from movie(year)(rating)
     
     thoughts = relationship("Thought", back_populates="persona", cascade="all, delete-orphan")
     messages = relationship("Message", back_populates="persona", cascade="all, delete-orphan")

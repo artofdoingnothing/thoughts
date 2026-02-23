@@ -9,9 +9,9 @@ from .dto import PersonaDomain
 
 class PersonaService:
     @classmethod
-    def create_persona(cls, name: str, age: int, gender: str, profile: Optional[Dict[str, Any]] = None, additional_info: Optional[Dict[str, Any]] = None, source: str = "manual") -> PersonaDomain:
+    def create_persona(cls, name: str, age: int, gender: str, profile: Optional[Dict[str, Any]] = None, additional_info: Optional[Dict[str, Any]] = None, source: str = "manual", origin_description: Optional[str] = None) -> PersonaDomain:
         with SessionLocal() as session:
-            persona = Persona(name=name, age=age, gender=gender, profile=profile, additional_info=additional_info, source=source)
+            persona = Persona(name=name, age=age, gender=gender, profile=profile, additional_info=additional_info, source=source, origin_description=origin_description)
             session.add(persona)
             session.commit()
             session.refresh(persona)

@@ -22,6 +22,7 @@ class PersonaDomain(PydanticBaseModel):
     profile: Optional[Dict[str, Any]] = None
     additional_info: Optional[Dict[str, Any]] = None
     source: Optional[str] = "manual"
+    origin_description: Optional[str] = None
     class Config:
         from_attributes = True
 

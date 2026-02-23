@@ -28,3 +28,14 @@ def search_characters(
     return dataset_use_cases.search_movie_characters(
         title_query=title, genre=genre, min_imdb_rating=min_rating, release_year=year, character_name=character_name
     )
+
+
+@router.get("/characters/random", response_model=MovieSearchResponse)
+def get_random_characters(
+    seed: Optional[float] = Query(None, description="Seed for random generation (e.g. timestamp)"),
+    limit: int = Query(50, description="Number of random characters to fetch", le=100)
+):
+    """
+    Get random movie characters, optionally seeded by a timestamp.
+    """
+    return dataset_use_cases.get_random_movie_characters(limit=limit, seed=seed)

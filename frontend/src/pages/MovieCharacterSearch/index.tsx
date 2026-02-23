@@ -12,19 +12,15 @@ import {
     ListItemText,
     ListItemSecondaryAction,
     IconButton,
-    Card,
-    CardContent,
-    CardActions,
     Divider,
     CircularProgress,
-    Chip,
     Alert
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import { useMovieCharacters } from '../../hooks/useMovieCharacters';
+import { useMovieCharacters, useRandomMovieCharacters } from '../../hooks/useMovieCharacters';
 import { useGeneratePersonaFromMovieCharacters } from '../../hooks/usePersonas';
 import type { MovieCharacter } from '../../types';
 
@@ -50,16 +46,42 @@ const MovieCharacterSearch: React.FC = () => {
     // Selected characters state
     const [selectedCharacters, setSelectedCharacters] = useState<MovieCharacter[]>([]);
 
-    const { data: searchData, isLoading, isError, error } = useMovieCharacters(queryParams);
+    const [randomSeed, setRandomSeed] = useState<number | null>(null);
+
+    const { data: searchData, isLoading: isSearchLoading, isError: isSearchError, error: searchError } = useMovieCharacters(queryParams);
+    const { data: randomData, isLoading: isRandomLoading, isError: isRandomError, error: randomError } = useRandomMovieCharacters(randomSeed);
+
     const generateMutation = useGeneratePersonaFromMovieCharacters();
 
     const handleSearch = () => {
+        setRandomSeed(null);
         setQueryParams({
             title: titlePart,
             genre: genre,
             min_rating: minRating ? parseFloat(minRating) : undefined,
             year: year,
             character_name: charName
+        });
+    };
+
+    const handleFetchRandom = () => {
+        setRandomSeed(Date.now());
+    };
+
+    const handleMovieClick = (movieTitle: string) => {
+        setRandomSeed(null);
+        setTitlePart(movieTitle);
+        setCharName('');
+        setGenre('');
+        setMinRating('');
+        setYear('');
+        
+        setQueryParams({
+            title: movieTitle,
+            genre: '',
+            min_rating: undefined,
+            year: '',
+            character_name: ''
         });
     };
 
@@ -96,13 +118,13 @@ const MovieCharacterSearch: React.FC = () => {
             <Grid container spacing={4}>
                 {/* Left Column: Selected Characters */}
                 <Grid size={{ xs: 12, md: 4 }}>
-                    <Paper elevation={3} sx={{ p: 3, height: '100%', minHeight: '600px', display: 'flex', flexDirection: 'column' }}>
+                    <Paper elevation={3} sx={{ p: 3, height: 'fit-content', minHeight: '600px', display: 'flex', flexDirection: 'column' }}>
                         <Typography variant="h6" gutterBottom fontWeight="bold">
                             Selected Roster ({selectedCharacters.length})
                         </Typography>
                         <Divider sx={{ mb: 2 }} />
                         
-                        <List sx={{ flexGrow: 1, overflow: 'auto' }}>
+                        <List sx={{ flexGrow: 1 }}>
                             {selectedCharacters.length === 0 ? (
                                 <Typography color="text.secondary" variant="body2" sx={{ textAlign: 'center', mt: 4 }}>
                                     No characters selected yet. Search and add characters to generate a persona.
@@ -155,9 +177,19 @@ const MovieCharacterSearch: React.FC = () => {
                 {/* Right Column: Search & Results */}
                 <Grid size={{ xs: 12, md: 8 }}>
                     <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
-                        <Typography variant="h6" gutterBottom fontWeight="bold">
-                            Search Filters
-                        </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                            <Typography variant="h6" fontWeight="bold">
+                                Search Filters
+                            </Typography>
+                            <Button 
+                                variant="outlined" 
+                                color="secondary" 
+                                onClick={handleFetchRandom}
+                                startIcon={<AutoAwesomeIcon />}
+                            >
+                                Fetch Random Characters
+                            </Button>
+                        </Box>
                         <Grid container spacing={2} alignItems="center">
                             <Grid size={{ xs: 12, sm: 12, md: 4 }}>
                                 <TextField
@@ -230,76 +262,81 @@ const MovieCharacterSearch: React.FC = () => {
 
                     <Box sx={{ width: '100%' }}>
                         <Typography variant="h6" gutterBottom fontWeight="bold">
-                            Results {searchData?.results ? `(${searchData.results.length})` : ''}
+                            Results {randomSeed && randomData?.results ? `(${randomData.results.length} random)` : searchData?.results ? `(${searchData.results.length})` : ''}
                         </Typography>
                         
-                        {isLoading && (
+                        {(isSearchLoading || isRandomLoading) && (
                             <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
                                 <CircularProgress />
                             </Box>
                         )}
                         
-                        {isError && (
+                        {(isSearchError || isRandomError) && (
                             <Alert severity="error">
-                                Error fetching movie characters: {(error as any)?.message}
+                                Error fetching movie characters: {((searchError || randomError) as any)?.message}
                             </Alert>
                         )}
 
-                        {!isLoading && !isError && searchData?.results && (
-                            <Grid container spacing={2}>
-                                {searchData.results.map((char) => {
-                                    const isSelected = !!selectedCharacters.find(c => c.character_id === char.character_id);
-                                    return (
-                                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={char.character_id}>
-                                            <Card 
-                                                variant="outlined" 
-                                                sx={{ 
-                                                    height: '100%', 
-                                                    display: 'flex', 
-                                                    flexDirection: 'column',
-                                                    borderColor: isSelected ? 'primary.main' : 'divider',
-                                                    borderWidth: isSelected ? 2 : 1
-                                                }}
-                                            >
-                                                <CardContent sx={{ flexGrow: 1 }}>
-                                                    <Typography variant="h6" component="div" noWrap title={char.character_name}>
-                                                        {char.character_name}
-                                                    </Typography>
-                                                    <Typography sx={{ mb: 1.5 }} color="text.secondary" variant="body2" noWrap title={char.movie_title}>
-                                                        {char.movie_title} ({char.movie_year})
-                                                    </Typography>
-                                                    
-                                                    <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                        <Chip label={`IMDB: ${char.movie_imdb_rating}`} size="small" variant="outlined" />
-                                                        {char.movie_genres.slice(0, 2).map(g => (
-                                                            <Chip key={g} label={g} size="small" color="primary" variant="outlined" />
-                                                        ))}
-                                                    </Box>
-                                                </CardContent>
-                                                <CardActions>
-                                                    <Button 
-                                                        size="small" 
-                                                        fullWidth 
-                                                        variant={isSelected ? "outlined" : "contained"}
-                                                        onClick={() => isSelected ? handleRemoveCharacter(char.character_id) : handleAddCharacter(char)}
-                                                        startIcon={isSelected ? <DeleteIcon /> : <AddIcon />}
-                                                        color={isSelected ? "error" : "primary"}
-                                                    >
-                                                        {isSelected ? 'Remove' : 'Add to Roster'}
-                                                    </Button>
-                                                </CardActions>
-                                            </Card>
-                                        </Grid>
-                                    );
-                                })}
-                                {searchData.results.length === 0 && (
-                                    <Grid size={{ xs: 12 }}>
-                                        <Typography color="text.secondary" sx={{ textAlign: 'center', p: 4 }}>
-                                            No characters found matching your filters.
-                                        </Typography>
-                                    </Grid>
-                                )}
-                            </Grid>
+                        {!(isSearchLoading || isRandomLoading) && !(isSearchError || isRandomError) && (randomSeed ? randomData?.results : searchData?.results) && (
+                            <Box sx={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '2px solid #ccc' }}>
+                                            <th style={{ padding: '8px' }}>Character Name</th>
+                                            <th style={{ padding: '8px' }}>Movie Title</th>
+                                            <th style={{ padding: '8px' }}>Genres</th>
+                                            <th style={{ padding: '8px' }}>Year</th>
+                                            <th style={{ padding: '8px' }}>Rating</th>
+                                            <th style={{ padding: '8px' }}>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(randomSeed ? randomData!.results : searchData!.results).map((char) => {
+                                            const isSelected = !!selectedCharacters.find(c => c.character_id === char.character_id);
+                                            return (
+                                                <tr key={char.character_id} style={{ borderBottom: '1px solid #eee', backgroundColor: isSelected ? 'rgba(25, 118, 210, 0.08)' : 'transparent' }}>
+                                                    <td style={{ padding: '12px 8px', fontWeight: 'bold' }}>{char.character_name}</td>
+                                                    <td style={{ padding: '12px 8px' }}>
+                                                        <Button 
+                                                            variant="text" 
+                                                            onClick={() => handleMovieClick(char.movie_title)}
+                                                            sx={{ 
+                                                                textTransform: 'none', 
+                                                                p: 0, 
+                                                                minWidth: 0, 
+                                                                textAlign: 'left',
+                                                                color: 'primary.main',
+                                                                '&:hover': { textDecoration: 'underline', bgcolor: 'transparent' }
+                                                            }}
+                                                        >
+                                                            {char.movie_title}
+                                                        </Button>
+                                                    </td>
+                                                    <td style={{ padding: '12px 8px' }}>{char.movie_genres.join(', ')}</td>
+                                                    <td style={{ padding: '12px 8px' }}>{char.movie_year}</td>
+                                                    <td style={{ padding: '12px 8px' }}>{char.movie_imdb_rating}</td>
+                                                    <td style={{ padding: '12px 8px' }}>
+                                                        <IconButton 
+                                                            size="small" 
+                                                            onClick={() => isSelected ? handleRemoveCharacter(char.character_id) : handleAddCharacter(char)}
+                                                            color={isSelected ? "error" : "primary"}
+                                                        >
+                                                            {isSelected ? <DeleteIcon /> : <AddIcon />}
+                                                        </IconButton>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {(randomSeed ? randomData!.results : searchData!.results).length === 0 && (
+                                            <tr>
+                                                <td colSpan={5} style={{ textAlign: 'center', padding: '24px', color: 'gray' }}>
+                                                    No characters found matching your filters.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </Box>
                         )}
                     </Box>
                 </Grid>

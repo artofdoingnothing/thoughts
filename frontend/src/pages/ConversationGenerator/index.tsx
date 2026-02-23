@@ -45,9 +45,11 @@ const ConversationGenerator: React.FC = () => {
   const [isSequenceModalOpen, setIsSequenceModalOpen] = useState(false);
   const [isPolling, setIsPolling] = useState(false);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
+  const pollCountRef = useRef(0);
+  const selectedConversationIdRef = useRef<number | null>(null);
 
   const { data: personas = [] } = usePersonas();
-  const { data: conversations = [], isLoading: isLoadingConversations } = useConversations(isPolling ? 2000 : false);
+  const { data: conversations = [], isLoading: isLoadingConversations, refetch } = useConversations(false);
 
   const createMutation = useCreateConversation();
   const generateMessageMutation = useGenerateMessage();
@@ -56,6 +58,10 @@ const ConversationGenerator: React.FC = () => {
   const endMutation = useEndConversation();
 
   const selectedConversation = conversations.find(c => c.id === selectedConversationId);
+  
+  useEffect(() => {
+      selectedConversationIdRef.current = selectedConversationId;
+  }, [selectedConversationId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -65,9 +71,58 @@ const ConversationGenerator: React.FC = () => {
     scrollToBottom();
   }, [selectedConversation?.messages]);
 
+  const conversationsRef = useRef(conversations);
+  useEffect(() => {
+      conversationsRef.current = conversations;
+  }, [conversations]);
+
+  const prevCountRef = useRef(0);
+
+  useEffect(() => {
+      let timeoutId: ReturnType<typeof setTimeout>;
+
+      const poll = async () => {
+          if (!isPolling) return;
+          
+          const currentConvoBefore = selectedConversationIdRef.current 
+              ? conversationsRef.current.find(c => c.id === selectedConversationIdRef.current) 
+              : null;
+          const prevCount = prevCountRef.current || currentConvoBefore?.messages.length || 0;
+          
+          const { data } = await refetch(); 
+          
+          const currentConvoAfter = selectedConversationIdRef.current && data
+              ? data.find(c => c.id === selectedConversationIdRef.current)
+              : null;
+          const newCount = currentConvoAfter?.messages.length || 0;
+
+          if (newCount > prevCount) {
+              pollCountRef.current = 0; // reset
+          } else {
+              pollCountRef.current += 1;
+          }
+          prevCountRef.current = newCount;
+
+          if (pollCountRef.current >= 8) { // Stop after 8 unchanged polls
+              setIsPolling(false);
+              return;
+          }
+
+          const nextInterval = 1000 * Math.pow(2, Math.min(pollCountRef.current, 3)); 
+          timeoutId = setTimeout(poll, nextInterval);
+      };
+
+      if (isPolling) {
+          prevCountRef.current = 0; // Reset prev count when polling starts
+          timeoutId = setTimeout(poll, 1000); 
+      }
+
+      return () => clearTimeout(timeoutId);
+  }, [isPolling, refetch]);
+
   const startPolling = () => {
       setIsPolling(true);
-      setTimeout(() => setIsPolling(false), 10000);
+      pollCountRef.current = 0;
   };
 
   const handleCreateConversation = (title: string, context: string, personaIds: number[]) => {
@@ -226,6 +281,14 @@ const ConversationGenerator: React.FC = () => {
                     <Typography color="text.secondary" align="center" sx={{ mt: 4 }}>
                         No messages yet. Start by generating one!
                     </Typography>
+                )}
+                {isPolling && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2, mt: 1 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
+                            Generating messages...
+                        </Typography>
+                        <CircularProgress size={20} />
+                    </Box>
                 )}
                 <div ref={messagesEndRef} />
             </Box>

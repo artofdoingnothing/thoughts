@@ -126,13 +126,22 @@ class GenerationUseCases:
         # 3. Synthesize ONE Persona profile based on the ENTIRE collection of generated thoughts
         persona_data = self.processor.synthesize_persona_from_thoughts(all_thoughts)
 
-        # 4. Save the new Persona
+        # 4. Generate origin description
+        origins = []
+        for char_id in character_ids:
+            char_meta = movie_service.get_character_by_id(char_id)
+            if char_meta:
+                origins.append(f"{char_meta.get('character_name')} from {char_meta.get('movie_title')}({char_meta.get('movie_year')})({char_meta.get('movie_imdb_rating')})")
+        origin_str = ", ".join(origins)
+
+        # 5. Save the new Persona
         new_persona = PersonaService.create_persona(
             name=persona_data.get("name", "Unknown Derived Character"),
             age=persona_data.get("age", 30),
             gender=persona_data.get("gender", "Unknown"),
             profile=persona_data.get("profile", {}),
-            source="movie_generated"
+            source="movie_generated",
+            origin_description=origin_str
         )
 
         # We return the data so a worker can enqueue the other analyzes

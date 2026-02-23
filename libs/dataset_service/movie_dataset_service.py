@@ -97,6 +97,49 @@ class MovieDatasetService:
 
         return results
 
+    def get_character_by_id(self, character_id: str) -> Optional[dict]:
+        titles_file = os.path.join(self.data_dir, "movie_titles_metadata.txt")
+        characters_file = os.path.join(self.data_dir, "movie_characters_metadata.txt")
+
+        if not os.path.exists(titles_file) or not os.path.exists(characters_file):
+            return None
+
+        # Find character first
+        char_info = None
+        with open(characters_file, "r", encoding="iso-8859-1") as f:
+            for line in f:
+                parts = self._parse_line(line)
+                if len(parts) >= 4 and parts[0] == character_id:
+                    char_info = {
+                        "character_id": parts[0],
+                        "character_name": parts[1],
+                        "movie_id": parts[2],
+                    }
+                    break
+        
+        if not char_info:
+            return None
+            
+        # Find movie
+        with open(titles_file, "r", encoding="iso-8859-1") as f:
+            for line in f:
+                parts = self._parse_line(line)
+                if len(parts) >= 6 and parts[0] == char_info["movie_id"]:
+                    import ast
+                    try:
+                        movie_genres = ast.literal_eval(parts[5])
+                    except:
+                        movie_genres = []
+                        
+                    return {
+                        **char_info,
+                        "movie_title": parts[1],
+                        "movie_year": parts[2],
+                        "movie_imdb_rating": parts[3],
+                        "movie_genres": movie_genres,
+                    }
+        return None
+
     def get_character_dialogues(self, character_id: str, limit: int = 100) -> List[List[str]]:
         conversations_file = os.path.join(self.data_dir, "movie_conversations.txt")
         lines_file = os.path.join(self.data_dir, "movie_lines.txt")
@@ -149,3 +192,62 @@ class MovieDatasetService:
                 dialogues.append(dialogue)
 
         return dialogues
+
+    def get_random_characters(self, limit: int = 50, seed: Optional[float] = None) -> List[dict]:
+        import random
+        import time
+        
+        titles_file = os.path.join(self.data_dir, "movie_titles_metadata.txt")
+        characters_file = os.path.join(self.data_dir, "movie_characters_metadata.txt")
+
+        # Fallback to empty if not exists (for tests)
+        if not os.path.exists(titles_file) or not os.path.exists(characters_file):
+            return []
+
+        # 1. Read all movies into memory
+        valid_movies = {}
+        with open(titles_file, "r", encoding="iso-8859-1") as f:
+            for line in f:
+                parts = self._parse_line(line)
+                if len(parts) >= 6:
+                    movie_id, title, year, rating_str, votes, genres_str = parts[:6]
+                    try:
+                        movie_genres = ast.literal_eval(genres_str)
+                    except:
+                        movie_genres = []
+                    valid_movies[movie_id] = {
+                        "movie_id": movie_id,
+                        "movie_title": title,
+                        "movie_year": year,
+                        "movie_imdb_rating": rating_str,
+                        "movie_genres": movie_genres,
+                    }
+
+        if not valid_movies:
+            return []
+
+        # 2. Read all characters into a list
+        all_characters = []
+        with open(characters_file, "r", encoding="iso-8859-1") as f:
+            for line in f:
+                parts = self._parse_line(line)
+                if len(parts) >= 4:
+                    char_id, char_name, movie_id, movie_title = parts[:4]
+                    if movie_id in valid_movies:
+                        movie_info = valid_movies[movie_id]
+                        all_characters.append({
+                            **movie_info,
+                            "character_id": char_id,
+                            "character_name": char_name,
+                        })
+
+        if not all_characters:
+            return []
+
+        if seed is None:
+            seed = time.time()
+            
+        rng = random.Random(seed)
+        sample_size = min(limit, len(all_characters))
+        return rng.sample(all_characters, sample_size)
+

@@ -17,6 +17,8 @@ The central entity for an identity.
   - `gender`: Gender identity
   - `profile`: A JSON object containing derived characteristics, traits, and historical context built up over time.
   - `additional_info`: Flexible JSON field for any extra metadata configured by the user.
+  - `origin_description`: String storing the source context for personas generated from datasets (e.g., movie character origin).
+  - `source`: Type of persona creation (manual, derived, movie_generated).
 
 ## Key Services and Operations
 

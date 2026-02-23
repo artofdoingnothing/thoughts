@@ -94,6 +94,12 @@ def test_generate_persona_from_movie_characters(
     # Mock movie service
     mock_movie_service = MagicMock()
     mock_movie_service.get_character_dialogues.return_value = [["Hello", "World"]]
+    mock_movie_service.get_character_by_id.return_value = {
+        "character_name": "CharName",
+        "movie_title": "MovieTitle",
+        "movie_year": "2024",
+        "movie_imdb_rating": "8.5"
+    }
     mock_movie_service_class.return_value = mock_movie_service
     
     # Mock processor
@@ -119,8 +125,6 @@ def test_generate_persona_from_movie_characters(
     mock_thought.id = 101
     mock_thought_uc.create_thought.return_value = mock_thought
     
-    mock_thought_uc_class.return_value = mock_thought_uc
-    
     # Execute Use Case
     uc = GenerationUseCases()
     result = uc.generate_persona_from_movie_characters(["char1"])
@@ -130,6 +134,7 @@ def test_generate_persona_from_movie_characters(
     assert result["thoughts"][0] == "Thought 1"
     
     mock_movie_service.get_character_dialogues.assert_called_once_with("char1", limit=500)
+    mock_movie_service.get_character_by_id.assert_called_once_with("char1")
     mock_processor.generate_thoughts_from_character_dialogue.assert_called_once_with([["Hello World"]][0], count=50)
     mock_processor.synthesize_persona_from_thoughts.assert_called_once_with(["Thought 1"])
     mock_persona_service.create_persona.assert_called_once_with(
@@ -137,7 +142,8 @@ def test_generate_persona_from_movie_characters(
         age=25,
         gender="Female",
         profile={"background": "Test"},
-        source="movie_generated"
+        source="movie_generated",
+        origin_description="CharName from MovieTitle(2024)(8.5)"
     )
 
 @patch("libs.dataset_service.movie_dataset_service.MovieDatasetService")

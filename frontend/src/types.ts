@@ -29,6 +29,7 @@ export interface Persona {
     };
     additional_info?: Record<string, any>;
     source: 'manual' | 'derived' | 'movie_generated' | string;
+    origin_description?: string;
 }
 
 export interface Thought {

@@ -22,3 +22,15 @@ export function useMovieCharacters(params: SearchMovieCharactersParams) {
         enabled: true,
     });
 }
+
+export function useRandomMovieCharacters(seed: number | null) {
+    return useQuery<MovieSearchResponse>({
+        queryKey: ['randomMovieCharacters', seed],
+        queryFn: async () => {
+            if (seed === null) return { results: [] };
+            const { data } = await api.get('/dataset/characters/random', { params: { seed, limit: 50 } });
+            return data;
+        },
+        enabled: seed !== null,
+    });
+}
